@@ -14,6 +14,9 @@ dependencies:
     path: ../dfe_core
   dfe_transporte_ffi:
     path: ../dfe_transporte_ffi
+  dfe_danfe:
+    path: ../dfe_danfe
+  printing: ^5.13.0
 
 dev_dependencies:
   flutter_test:

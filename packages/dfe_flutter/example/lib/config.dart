@@ -27,6 +27,15 @@ class ConfigApp {
   String pastaXml = '';
   int idLote = 1;
 
+  // DANFE / impressora (a impressão é responsabilidade do app)
+  String impressora = '';
+  int colunas = 48;
+  bool itemDuasLinhas = false;
+  String modoQr = 'nativo'; // nativo | imagem
+  String paginaCodigo = 'cp860'; // cp860 | cp850 | semAcento
+  String corte = 'parcial'; // total | parcial | nenhum
+  bool abrirGaveta = false;
+
   static Directory get pastaApp {
     final base = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '.';
     return Directory('$base${Platform.pathSeparator}Documents${Platform.pathSeparator}dfe_dart');
@@ -55,6 +64,8 @@ class ConfigApp {
         'municipio': municipio, 'cep': cep, 'serieNfe': serieNfe, 'proximoNfe': proximoNfe,
         'serieNfce': serieNfce, 'proximoNfce': proximoNfce, 'versaoQr': versaoQr,
         'idCsc': idCsc, 'csc': csc, 'pastaXml': pastaXml, 'idLote': idLote,
+        'impressora': impressora, 'colunas': colunas, 'itemDuasLinhas': itemDuasLinhas,
+        'modoQr': modoQr, 'paginaCodigo': paginaCodigo, 'corte': corte, 'abrirGaveta': abrirGaveta,
       };
 
   void _deJson(Map j) {
@@ -81,5 +92,12 @@ class ConfigApp {
     csc = v('csc', csc);
     pastaXml = v('pastaXml', pastaXml);
     idLote = v('idLote', idLote);
+    impressora = v('impressora', impressora);
+    colunas = v('colunas', colunas);
+    itemDuasLinhas = v('itemDuasLinhas', itemDuasLinhas);
+    modoQr = v('modoQr', modoQr);
+    paginaCodigo = v('paginaCodigo', paginaCodigo);
+    corte = v('corte', corte);
+    abrirGaveta = v('abrirGaveta', abrirGaveta);
   }
 }

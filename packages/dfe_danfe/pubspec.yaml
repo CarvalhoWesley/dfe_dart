@@ -1,0 +1,18 @@
+name: dfe_danfe
+description: DANFE NFC-e a partir do procNFe — texto, PDF e bytes ESC/POS. A impressão fica com o app.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  xml: ^6.5.0
+  pdf: ^3.11.0
+  qr: ^3.0.1
+  # image 4.11 usa API do archive indisponível nas versões compatíveis com Dart 3.4
+  image: ">=4.2.0 <4.6.0"
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0

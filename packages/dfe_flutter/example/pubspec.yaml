@@ -26,6 +26,8 @@ dependencies:
     path: ../
   dfe_core:
     path: ../../dfe_core
+  ffi: ^2.1.0
+  printing: ^5.13.0
   dfe_nfe:
     path: ../../dfe_nfe
 

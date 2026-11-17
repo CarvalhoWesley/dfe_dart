@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:dfe_nfe/dfe_nfe.dart';
 
 import 'config.dart';
+import 'danfe_page.dart';
 import 'emissao.dart';
 
 void main() => runApp(MaterialApp(
@@ -65,13 +66,18 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('dfe_dart — NF-e / NFC-e em homologação'),
-          bottom: const TabBar(tabs: [Tab(text: 'Emissão'), Tab(text: 'Configuração')]),
+          bottom: const TabBar(
+              tabs: [Tab(text: 'Emissão'), Tab(text: 'DANFE'), Tab(text: 'Configuração')]),
         ),
-        body: TabBarView(children: [_abaEmissao(), _abaConfig()]),
+        body: TabBarView(children: [
+          _abaEmissao(),
+          DanfePage(cfg: cfg, log: _registrar),
+          _abaConfig(),
+        ]),
       ),
     );
   }
@@ -161,6 +167,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _opcao(String rotulo, String valor, Map<String, String> opcoes, void Function(String) set) =>
+      SizedBox(
+        width: 200,
+        child: DropdownButtonFormField<String>(
+          initialValue: opcoes.containsKey(valor) ? valor : opcoes.keys.first,
+          decoration: InputDecoration(labelText: rotulo),
+          items: [
+            for (final e in opcoes.entries) DropdownMenuItem(value: e.key, child: Text(e.value)),
+          ],
+          onChanged: (v) => setState(() => set(v!)),
+        ),
+      );
+
   Widget _abaConfig() {
     Widget campo(String rotulo, String valor, void Function(String) set,
             {double largura = 260, bool segredo = false}) =>
@@ -216,6 +235,22 @@ class _HomePageState extends State<HomePage> {
         campo('Versão (v2 ou v3)', cfg.versaoQr, (v) => cfg.versaoQr = v.trim(), largura: 160),
         campo('ID do CSC (v2)', cfg.idCsc, (v) => cfg.idCsc = v.trim(), largura: 160),
         campo('CSC (v2)', cfg.csc, (v) => cfg.csc = v.trim(), segredo: true),
+      ]),
+      secao('DANFE NFC-e e impressora (ESC/POS)', [
+        _opcao('Papel', cfg.colunas <= 32 ? '58' : '80', {'80': '80 mm (48 col.)', '58': '58 mm (32 col.)'},
+            (v) => cfg.colunas = v == '58' ? 32 : 48),
+        _opcao('Item', cfg.itemDuasLinhas ? '2' : '1', {'1': 'Uma linha', '2': 'Duas linhas'},
+            (v) => cfg.itemDuasLinhas = v == '2'),
+        _opcao('QR Code', cfg.modoQr, {'nativo': 'Nativo (GS ( k)', 'imagem': 'Imagem raster'},
+            (v) => cfg.modoQr = v),
+        _opcao('Acentos', cfg.paginaCodigo,
+            {'cp860': 'CP860', 'cp850': 'CP850', 'semAcento': 'Sem acento'}, (v) => cfg.paginaCodigo = v),
+        _opcao('Corte', cfg.corte, {'parcial': 'Parcial', 'total': 'Total', 'nenhum': 'Sem corte'},
+            (v) => cfg.corte = v),
+        _opcao('Gaveta', cfg.abrirGaveta ? 's' : 'n', {'n': 'Não abrir', 's': 'Abrir'},
+            (v) => cfg.abrirGaveta = v == 's'),
+        campo('Impressora (nome no Windows)', cfg.impressora, (v) => cfg.impressora = v.trim(),
+            largura: 400),
       ]),
       Align(
         alignment: Alignment.centerLeft,
