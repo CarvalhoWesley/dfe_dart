@@ -125,8 +125,6 @@ class _HomePageState extends State<HomePage> {
               (e) => e.emitir(ModeloDocumento.nfe, tp: svc)),
           botao('Consultar última NF-e', Icons.search, (e) => e.consultar(ModeloDocumento.nfe)),
           botao('Cancelar última NF-e', Icons.block, (e) => e.cancelarUltima(ModeloDocumento.nfe)),
-          botao('Inutilizar próximo nº NF-e', Icons.do_not_disturb_on_outlined,
-              (e) => e.inutilizarProximo(ModeloDocumento.nfe)),
         ]),
         grupo('NFC-e (modelo 65)', [
           botao('Status NFC-e', Icons.wifi_tethering, (e) => e.status(ModeloDocumento.nfce)),
@@ -136,8 +134,6 @@ class _HomePageState extends State<HomePage> {
           botao('Transmitir NFC-e pendentes', Icons.cloud_upload, (e) => e.transmitirPendentes()),
           botao('Consultar última NFC-e', Icons.search, (e) => e.consultar(ModeloDocumento.nfce)),
           botao('Cancelar última NFC-e', Icons.block, (e) => e.cancelarUltima(ModeloDocumento.nfce)),
-          botao('Inutilizar próximo nº NFC-e', Icons.do_not_disturb_on_outlined,
-              (e) => e.inutilizarProximo(ModeloDocumento.nfce)),
         ]),
         Row(children: [
           Expanded(child: Text('XMLs em: ${cfg.pastaXml}', overflow: TextOverflow.ellipsis)),
