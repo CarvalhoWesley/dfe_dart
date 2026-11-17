@@ -1,0 +1,32 @@
+name: dfe_flutter
+description: Transporte TLS mútuo para a SEFAZ usando a pilha HTTP nativa de cada plataforma (aceita renegociação TLS).
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.4.0
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dfe_core:
+    path: ../dfe_core
+  dfe_transporte_ffi:
+    path: ../dfe_transporte_ffi
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: br.com.dfedart.dfe_flutter
+        pluginClass: DfeFlutterPlugin
+      ios:
+        pluginClass: DfeFlutterPlugin
+      macos:
+        pluginClass: DfeFlutterPlugin

@@ -1,0 +1,35 @@
+# Dart / Flutter
+.dart_tool/
+build/
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ephemeral/
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+**/GeneratedPluginRegistrant.*
+**/generated_plugin_registrant.*
+**/generated_plugins.cmake
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Android / iOS / macOS
+.gradle/
+local.properties
+**/Pods/
+**/.symlinks/
+
+# .NET (tools/golden_assinatura)
+bin/
+obj/
+
+# Certificados e segredos: NUNCA versionar certificados reais
+*.pfx
+*.p12
+.env
+# Exceção: certificados autoassinados de teste (senha123)
+!packages/dfe_core/test/fixtures/*.pfx
+!packages/dfe_flutter/example/assets/teste.pfx

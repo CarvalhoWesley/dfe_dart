@@ -1,0 +1,15 @@
+name: dfe_core
+description: Núcleo para documentos fiscais eletrônicos (XML, C14N, XMLDSig, PKCS#12, SOAP). Porte do ZeusFiscal.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  xml: ^6.5.0
+  pointycastle: ^3.9.1
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
