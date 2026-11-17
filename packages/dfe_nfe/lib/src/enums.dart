@@ -30,6 +30,12 @@ enum TipoEmissao {
   final int codigo;
 
   bool get contingencia => this != normal;
+
+  static TipoEmissao porCodigo(int codigo) =>
+      values.firstWhere((t) => t.codigo == codigo, orElse: () => normal);
+
+  /// Forma de emissão contida na chave de acesso (posição 35).
+  static TipoEmissao daChave(String chave) => porCodigo(int.parse(chave[34]));
 }
 
 /// Unidades federativas com o código IBGE (cUF).

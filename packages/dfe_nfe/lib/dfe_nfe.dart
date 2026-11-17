@@ -8,6 +8,7 @@ export 'src/emissao/montador_nfe.dart';
 export 'src/emissao/qrcode_nfce.dart';
 export 'src/enderecos.dart';
 export 'src/enums.dart';
+export 'src/eventos/eventos.dart';
 export 'src/servicos_nfe.dart';
 export 'src/status/cons_stat_serv.dart';
 export 'src/util/chave_acesso.dart';

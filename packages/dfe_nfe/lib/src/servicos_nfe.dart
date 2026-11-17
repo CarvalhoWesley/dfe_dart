@@ -3,7 +3,46 @@ import 'package:dfe_core/dfe_core.dart';
 import 'autorizacao/autorizacao.dart';
 import 'enderecos.dart';
 import 'enums.dart';
+import 'eventos/eventos.dart';
 import 'status/cons_stat_serv.dart';
+
+/// Resultado do envio de um evento.
+class ResultadoEvento {
+  ResultadoEvento({
+    required this.envioXml,
+    required this.retornoXml,
+    required this.lote,
+    required this.evento,
+    this.retEvento,
+    this.procEventoXml,
+  });
+
+  final String envioXml;
+  final String retornoXml;
+  final RetEnvEvento lote;
+  final EventoNfe evento;
+  final RetEvento? retEvento;
+
+  /// `procEventoNFe`, presente quando o evento foi registrado.
+  final String? procEventoXml;
+}
+
+/// Resultado de uma inutilização.
+class ResultadoInutilizacao {
+  ResultadoInutilizacao({
+    required this.envioXml,
+    required this.retornoXml,
+    required this.retorno,
+    this.procInutXml,
+  });
+
+  final String envioXml;
+  final String retornoXml;
+  final RetInutNfe retorno;
+
+  /// `ProcInutNFe`, presente quando homologada.
+  final String? procInutXml;
+}
 
 /// Configuração imutável dos serviços (substitui o singleton `ConfiguracaoServico` do Zeus).
 class ConfiguracaoNfe {
@@ -137,6 +176,92 @@ class ServicosNfe {
       reciboXml: reciboXml,
       consultaReciboXml: consultaXml,
     );
+  }
+
+  /// Consulta a situação da NF-e/NFC-e pela chave de acesso.
+  ///
+  /// Notas emitidas em SVC são consultadas na SVC.
+  Future<RetornoNfe<RetConsSitNfe>> consultarProtocolo(String chave) async {
+    final envio = montarConsSitNfe(chave, config.ambiente);
+    final ret = await _enviar(
+        ServicoNfe.consultaProtocolo, _url(ServicoNfe.consultaProtocolo, chave), envio);
+    return RetornoNfe(envioXml: envio, retornoXml: ret, retorno: RetConsSitNfe.fromXml(ret));
+  }
+
+  /// Cancela uma NF-e/NFC-e autorizada (evento 110111).
+  ///
+  /// [procEventoXml] do resultado é o XML a guardar quando [RetEvento.registrado].
+  Future<ResultadoEvento> cancelar({
+    required String chave,
+    required String protocolo,
+    required String justificativa,
+    required int idLote,
+    String? cnpj,
+    int sequencia = 1,
+  }) async {
+    final evento = montarEventoCancelamento(
+      chave: chave,
+      protocolo: protocolo,
+      justificativa: justificativa,
+      cnpj: cnpj ?? chave.substring(6, 20),
+      ambiente: config.ambiente,
+      certificado: config.certificado,
+      sequencia: sequencia,
+    );
+    final envio = montarEnvEvento([evento], idLote: idLote);
+    final ret = await _enviar(
+        ServicoNfe.recepcaoEvento, _url(ServicoNfe.recepcaoEvento, chave), envio);
+    final lote = RetEnvEvento.fromXml(ret);
+    final retEvento = lote.eventos.firstOrNull;
+    return ResultadoEvento(
+      envioXml: envio,
+      retornoXml: ret,
+      lote: lote,
+      evento: evento,
+      retEvento: retEvento,
+      procEventoXml: retEvento != null && retEvento.registrado
+          ? montarProcEventoNfe(evento, retEvento)
+          : null,
+    );
+  }
+
+  /// Inutiliza uma faixa de numeração ([numeroInicial] a [numeroFinal]).
+  Future<ResultadoInutilizacao> inutilizar({
+    required String cnpj,
+    required int serie,
+    required int numeroInicial,
+    required int numeroFinal,
+    required String justificativa,
+    int? ano,
+  }) async {
+    final inut = montarInutilizacao(
+      uf: config.uf,
+      ambiente: config.ambiente,
+      cnpj: cnpj,
+      modelo: config.modelo,
+      serie: serie,
+      numeroInicial: numeroInicial,
+      numeroFinal: numeroFinal,
+      justificativa: justificativa,
+      certificado: config.certificado,
+      ano: ano,
+    );
+    final url = Enderecador.url(ServicoNfe.inutilizacao, config.uf, config.modelo, config.ambiente);
+    final ret = await _enviar(ServicoNfe.inutilizacao, url, inut.xml);
+    final r = RetInutNfe.fromXml(ret);
+    return ResultadoInutilizacao(
+      envioXml: inut.xml,
+      retornoXml: ret,
+      retorno: r,
+      procInutXml: r.homologada ? montarProcInutNfe(inut, r) : null,
+    );
+  }
+
+  /// URL considerando a forma de emissão da chave (SVC usa o servidor de contingência).
+  String _url(ServicoNfe servico, String chave) {
+    final tp = TipoEmissao.daChave(chave);
+    return Enderecador.url(servico, config.uf, config.modelo, config.ambiente,
+        tipoEmissao: tp == TipoEmissao.svcAn || tp == TipoEmissao.svcRs ? tp : TipoEmissao.normal);
   }
 
   Future<String> _enviar(ServicoNfe servico, String url, String xml) => _soap.enviar(

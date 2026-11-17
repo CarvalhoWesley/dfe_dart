@@ -6,7 +6,10 @@ const _wsdl = 'http://www.portalfiscal.inf.br/nfe/wsdl';
 enum ServicoNfe {
   statusServico('$_wsdl/NFeStatusServico4', '$_wsdl/NFeStatusServico4/nfeStatusServicoNF'),
   autorizacao('$_wsdl/NFeAutorizacao4', '$_wsdl/NFeAutorizacao4/nfeAutorizacaoLote'),
-  retAutorizacao('$_wsdl/NFeRetAutorizacao4', '$_wsdl/NFeRetAutorizacao4/nfeRetAutorizacaoLote');
+  retAutorizacao('$_wsdl/NFeRetAutorizacao4', '$_wsdl/NFeRetAutorizacao4/nfeRetAutorizacaoLote'),
+  consultaProtocolo('$_wsdl/NFeConsultaProtocolo4', '$_wsdl/NFeConsultaProtocolo4/nfeConsultaNF'),
+  inutilizacao('$_wsdl/NFeInutilizacao4', '$_wsdl/NFeInutilizacao4/nfeInutilizacaoNF'),
+  recepcaoEvento('$_wsdl/NFeRecepcaoEvento4', '$_wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento');
 
   const ServicoNfe(this.namespaceWsdl, this.action);
   final String namespaceWsdl;
@@ -24,12 +27,17 @@ class Enderecador {
         ServicoNfe.statusServico: 'https://$host/ws/NfeStatusServico/NfeStatusServico4.asmx',
         ServicoNfe.autorizacao: 'https://$host/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
         ServicoNfe.retAutorizacao: 'https://$host/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
+        ServicoNfe.consultaProtocolo: 'https://$host/ws/NfeConsulta/NfeConsulta4.asmx',
+        ServicoNfe.inutilizacao: 'https://$host/ws/nfeinutilizacao/nfeinutilizacao4.asmx',
+        ServicoNfe.recepcaoEvento: 'https://$host/ws/recepcaoevento/recepcaoevento4.asmx',
       };
 
   static _Urls _svan(String host) => {
         ServicoNfe.statusServico: 'https://$host/NFeStatusServico4/NFeStatusServico4.asmx',
         ServicoNfe.autorizacao: 'https://$host/NFeAutorizacao4/NFeAutorizacao4.asmx',
         ServicoNfe.retAutorizacao: 'https://$host/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx',
+        ServicoNfe.consultaProtocolo: 'https://$host/NFeConsultaProtocolo4/NFeConsultaProtocolo4.asmx',
+        ServicoNfe.recepcaoEvento: 'https://$host/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx',
       };
 
   static final Map<ModeloDocumento, Map<Ambiente, _Urls>> _svrsTabela = {
@@ -56,11 +64,17 @@ class Enderecador {
           ServicoNfe.statusServico: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
           ServicoNfe.autorizacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
           ServicoNfe.retAutorizacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx',
+          ServicoNfe.consultaProtocolo: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeconsultaprotocolo4.asmx',
+          ServicoNfe.inutilizacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeinutilizacao4.asmx',
+          ServicoNfe.recepcaoEvento: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx',
         },
         Ambiente.producao: {
           ServicoNfe.statusServico: 'https://nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
           ServicoNfe.autorizacao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
           ServicoNfe.retAutorizacao: 'https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx',
+          ServicoNfe.consultaProtocolo: 'https://nfe.fazenda.sp.gov.br/ws/nfeconsultaprotocolo4.asmx',
+          ServicoNfe.inutilizacao: 'https://nfe.fazenda.sp.gov.br/ws/nfeinutilizacao4.asmx',
+          ServicoNfe.recepcaoEvento: 'https://nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx',
         },
       },
       ModeloDocumento.nfce: {
@@ -68,11 +82,17 @@ class Enderecador {
           ServicoNfe.statusServico: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx',
           ServicoNfe.autorizacao: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx',
           ServicoNfe.retAutorizacao: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx',
+          ServicoNfe.consultaProtocolo: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx',
+          ServicoNfe.inutilizacao: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx',
+          ServicoNfe.recepcaoEvento: 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx',
         },
         Ambiente.producao: {
           ServicoNfe.statusServico: 'https://nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx',
           ServicoNfe.autorizacao: 'https://nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx',
           ServicoNfe.retAutorizacao: 'https://nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx',
+          ServicoNfe.consultaProtocolo: 'https://nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx',
+          ServicoNfe.inutilizacao: 'https://nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx',
+          ServicoNfe.recepcaoEvento: 'https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx',
         },
       },
     },

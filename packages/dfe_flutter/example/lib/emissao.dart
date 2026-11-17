@@ -198,4 +198,118 @@ class EmissaoTeste {
       s.fechar();
     }
   }
+
+  // --- Consulta, cancelamento e inutilização ---------------------------------
+
+  /// Última nota autorizada (pelo `-procNFe.xml` mais recente) ainda não cancelada.
+  ({String chave, String protocolo})? _ultimaAutorizada(ModeloDocumento modelo,
+      {bool ignorarCanceladas = true}) {
+    final pasta = _pasta(modelo);
+    final procs = pasta
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('-procNFe.xml'))
+        .toList()
+      ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    for (final f in procs) {
+      final chave = f.uri.pathSegments.last.substring(0, 44);
+      final cancelada = File('${pasta.path}${Platform.pathSeparator}$chave-110111-01-procEventoNFe.xml')
+          .existsSync();
+      if (ignorarCanceladas && cancelada) continue;
+      final prot = RegExp(r'<nProt>(\d+)</nProt>').firstMatch(f.readAsStringSync())?.group(1);
+      if (prot != null) return (chave: chave, protocolo: prot);
+    }
+    return null;
+  }
+
+  /// Consulta a situação da [chave] (ou da última autorizada).
+  Future<void> consultar(ModeloDocumento modelo, {String? chave}) async {
+    final alvo = chave ?? _ultimaAutorizada(modelo, ignorarCanceladas: false)?.chave;
+    if (alvo == null) {
+      log('Nenhuma ${modelo.name.toUpperCase()} autorizada para consultar.');
+      return;
+    }
+    final s = _servicos(modelo);
+    try {
+      final r = await s.consultarProtocolo(alvo);
+      final pasta = _pasta(modelo);
+      _gravar(pasta, '$alvo-ped-sit.xml', r.envioXml);
+      _gravar(pasta, '$alvo-sit.xml', r.retornoXml);
+      log('Consulta $alvo: cStat ${r.retorno.cStat} - ${r.retorno.xMotivo}');
+      if (r.retorno.protocolo != null) log('  Protocolo ${r.retorno.protocolo!.nProt}');
+      if (r.retorno.eventos.isNotEmpty) log('  ${r.retorno.eventos.length} evento(s) vinculado(s)');
+    } finally {
+      s.fechar();
+    }
+  }
+
+  /// Cancela a última nota autorizada do [modelo].
+  Future<void> cancelarUltima(ModeloDocumento modelo) async {
+    final alvo = _ultimaAutorizada(modelo);
+    if (alvo == null) {
+      log('Nenhuma ${modelo.name.toUpperCase()} autorizada e não cancelada.');
+      return;
+    }
+    log('Cancelando ${alvo.chave} (protocolo ${alvo.protocolo})');
+    final s = _servicos(modelo);
+    try {
+      final r = await s.cancelar(
+        chave: alvo.chave,
+        protocolo: alvo.protocolo,
+        justificativa: 'CANCELAMENTO DE TESTE EM AMBIENTE DE HOMOLOGACAO',
+        idLote: cfg.idLote++,
+      );
+      cfg.salvar();
+      final pasta = _pasta(modelo);
+      _gravar(pasta, '${alvo.chave}-ped-can.xml', r.envioXml);
+      _gravar(pasta, '${alvo.chave}-can.xml', r.retornoXml);
+      log('  Lote: cStat ${r.lote.cStat} - ${r.lote.xMotivo}');
+      final ev = r.retEvento;
+      if (ev != null) log('  Evento: cStat ${ev.cStat} - ${ev.xMotivo}');
+      if (r.procEventoXml != null) {
+        final p = _gravar(pasta, '${alvo.chave}-110111-01-procEventoNFe.xml', r.procEventoXml!);
+        log('  Cancelamento registrado (protocolo ${ev!.nProt}): $p');
+      }
+    } finally {
+      s.fechar();
+    }
+  }
+
+  /// Inutiliza o próximo número do [modelo] e avança a numeração.
+  Future<void> inutilizarProximo(ModeloDocumento modelo) async {
+    final nfe = modelo == ModeloDocumento.nfe;
+    final serie = nfe ? cfg.serieNfe : cfg.serieNfce;
+    final numero = nfe ? cfg.proximoNfe : cfg.proximoNfce;
+    log('Inutilizando ${modelo.name.toUpperCase()} série $serie nº $numero');
+    final s = _servicos(modelo);
+    try {
+      final r = await s.inutilizar(
+        cnpj: cfg.cnpj,
+        serie: serie,
+        numeroInicial: numero,
+        numeroFinal: numero,
+        justificativa: 'INUTILIZACAO DE TESTE EM AMBIENTE DE HOMOLOGACAO',
+      );
+      final pasta = _pasta(modelo, 'inutilizacoes');
+      final nome = 'serie$serie-$numero-$numero';
+      _gravar(pasta, '$nome-ped-inu.xml', r.envioXml);
+      _gravar(pasta, '$nome-inu.xml', r.retornoXml);
+      log('  cStat ${r.retorno.cStat} - ${r.retorno.xMotivo}');
+      if (r.retorno.servicoDesativado) {
+        log('  A SEFAZ desativou a inutilização para esta UF/modelo; o número não foi inutilizado.');
+      }
+      if (r.procInutXml != null) {
+        final p = _gravar(pasta, '$nome-procInutNFe.xml', r.procInutXml!);
+        log('  Inutilização homologada (protocolo ${r.retorno.nProt}): $p');
+        if (nfe) {
+          cfg.proximoNfe++;
+        } else {
+          cfg.proximoNfce++;
+        }
+        cfg.salvar();
+      }
+    } finally {
+      s.fechar();
+    }
+  }
 }
