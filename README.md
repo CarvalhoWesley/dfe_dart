@@ -13,7 +13,8 @@ Biblioteca Dart/Flutter para emissão de documentos fiscais eletrônicos brasile
 | [`dfe_core`](packages/dfe_core) | Certificado A1 (PKCS#12), C14N, assinatura XMLDSig (idêntica ao `SignedXml` do .NET), cliente SOAP 1.2 |
 | [`dfe_nfe`](packages/dfe_nfe) | NF-e/NFC-e 4.00: montagem do XML, chave de acesso, QR Code v2/v3, autorização, `nfeProc`, URLs |
 | [`dfe_transporte_ffi`](packages/dfe_transporte_ffi) | TLS mútuo nativo via FFI: WinHTTP/SChannel (Windows) e libcurl (Linux) |
-| [`dfe_flutter`](packages/dfe_flutter) | Plugin Flutter: escolhe o transporte nativo da plataforma; app de exemplo de emissão |
+| [`dfe_danfe`](packages/dfe_danfe) | DANFE NFC-e: texto, PDF e bytes ESC/POS a partir do `procNFe` (a impressão fica com o app) |
+| [`dfe_flutter`](packages/dfe_flutter) | Plugin Flutter: transporte nativo da plataforma, imagem PNG do DANFE e app de exemplo |
 
 ### Por que um transporte nativo?
 
