@@ -8,6 +8,8 @@ import 'dart:typed_data';
 
 import 'src/dados_danfe.dart';
 import 'src/layout.dart';
+import 'src/nfe/dados_danfe_nfe.dart';
+import 'src/nfe/danfe_nfe_pdf.dart';
 import 'src/saida_escpos.dart';
 import 'src/saida_pdf.dart';
 import 'src/saida_texto.dart';
@@ -17,6 +19,26 @@ export 'src/layout.dart'
     show Alinhamento, ElementoDanfe, LinhaDanfe, SeparadorDanfe, QrCodeDanfe, OpcoesDanfe;
 export 'src/saida_escpos.dart' show OpcoesEscPos, PaginaCodigo, ModoQrCode, Corte;
 export 'src/saida_pdf.dart' show OpcoesPdf;
+export 'src/nfe/dados_danfe_nfe.dart';
+export 'src/nfe/danfe_nfe_pdf.dart' show OpcoesDanfeNfe;
+
+/// DANFE NF-e (modelo 55), A4 retrato, conforme o MOC. Saída em PDF; a imagem
+/// de cada folha é gerada no `dfe_flutter`.
+///
+/// ```dart
+/// final pdf = await DanfeNfe.deXml(procNFeXml).pdf();
+/// ```
+class DanfeNfe {
+  DanfeNfe(this.dados);
+
+  /// Aceita o `nfeProc` autorizado ou o `<NFe>` assinado.
+  factory DanfeNfe.deXml(String xml) => DanfeNfe(DadosDanfeNfe.deXml(xml));
+
+  final DadosDanfeNfe dados;
+
+  Future<Uint8List> pdf([OpcoesDanfeNfe opcoes = const OpcoesDanfeNfe()]) =>
+      renderizarDanfeNfe(dados, opcoes);
+}
 
 /// DANFE NFC-e.
 ///

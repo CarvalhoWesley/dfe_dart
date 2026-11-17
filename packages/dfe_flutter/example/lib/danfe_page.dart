@@ -9,7 +9,23 @@ import 'package:printing/printing.dart';
 import 'config.dart';
 import 'impressao_windows.dart';
 
-/// Aba DANFE: escolhe uma NFC-e gravada, pré-visualiza e exporta/imprime.
+/// Documento gravado que pode gerar DANFE.
+class _Documento {
+  _Documento(this.arquivo, {required this.nfce, required this.pendente, required this.cancelada});
+  final File arquivo;
+  final bool nfce;
+  final bool pendente;
+  final bool cancelada;
+
+  String get chave => arquivo.uri.pathSegments.last.substring(0, 44);
+  String get situacao => [
+        nfce ? 'NFC-e' : 'NF-e',
+        if (pendente) 'contingência pendente' else 'autorizada',
+        if (cancelada) 'CANCELADA',
+      ].join(' · ');
+}
+
+/// Aba DANFE: escolhe uma NF-e/NFC-e gravada, pré-visualiza e exporta/imprime.
 ///
 /// Mostra a divisão de responsabilidades: a biblioteca gera texto, PDF, PNG e
 /// ESC/POS; o app escolhe como imprimir.
@@ -24,9 +40,9 @@ class DanfePage extends StatefulWidget {
 }
 
 class _DanfePageState extends State<DanfePage> {
-  List<File> _arquivos = [];
-  File? _selecionado;
-  Uint8List? _png;
+  List<_Documento> _docs = [];
+  _Documento? _sel;
+  List<Uint8List> _pngs = [];
   String? _erro;
   bool _ocupado = false;
 
@@ -40,24 +56,32 @@ class _DanfePageState extends State<DanfePage> {
 
   void _listar() {
     final s = Platform.pathSeparator;
-    final arquivos = <File>[];
-    for (final (pasta, sufixo) in [
-      ('${cfg.pastaXml}${s}nfce', '-procNFe.xml'),
-      ('${cfg.pastaXml}${s}nfce${s}pendentes', '-nfe.xml'),
+    final docs = <_Documento>[];
+    for (final (pasta, sufixo, nfce, pendente) in [
+      ('${cfg.pastaXml}${s}nfce', '-procNFe.xml', true, false),
+      ('${cfg.pastaXml}${s}nfce${s}pendentes', '-nfe.xml', true, true),
+      ('${cfg.pastaXml}${s}nfe', '-procNFe.xml', false, false),
     ]) {
       final d = Directory(pasta);
       if (!d.existsSync()) continue;
-      arquivos.addAll(d.listSync().whereType<File>().where((f) => f.path.endsWith(sufixo)));
+      for (final f in d.listSync().whereType<File>().where((f) => f.path.endsWith(sufixo))) {
+        final chave = f.uri.pathSegments.last.substring(0, 44);
+        final cancelada = File('$pasta$s$chave-110111-01-procEventoNFe.xml').existsSync();
+        docs.add(_Documento(f, nfce: nfce, pendente: pendente, cancelada: cancelada));
+      }
     }
-    arquivos.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
-    setState(() => _arquivos = arquivos);
-    if (arquivos.isNotEmpty && _selecionado == null) _selecionar(arquivos.first);
+    docs.sort((a, b) => b.arquivo.lastModifiedSync().compareTo(a.arquivo.lastModifiedSync()));
+    setState(() => _docs = docs);
+    if (docs.isNotEmpty && _sel == null) _selecionar(docs.first);
   }
 
-  DanfeNfce _danfe() => DanfeNfce.deXml(
-        _selecionado!.readAsStringSync(),
-        opcoes: OpcoesDanfe(colunas: cfg.colunas, itemEmDuasLinhas: cfg.itemDuasLinhas),
-      );
+  String get _xml => _sel!.arquivo.readAsStringSync();
+
+  DanfeNfce _nfce() => DanfeNfce.deXml(_xml,
+      opcoes: OpcoesDanfe(colunas: cfg.colunas, itemEmDuasLinhas: cfg.itemDuasLinhas));
+
+  DanfeNfe _nfe() => DanfeNfe.deXml(_xml);
+  OpcoesDanfeNfe get _opcoesNfe => OpcoesDanfeNfe(cancelada: _sel!.cancelada);
 
   OpcoesPdf get _opcoesPdf => OpcoesPdf(larguraMm: cfg.colunas <= 32 ? 58 : 80);
 
@@ -76,22 +100,26 @@ class _DanfePageState extends State<DanfePage> {
         abrirGaveta: cfg.abrirGaveta,
       );
 
-  Future<void> _selecionar(File f) async {
+  Future<Uint8List> _pdf() => _sel!.nfce ? _nfce().pdf(_opcoesPdf) : _nfe().pdf(_opcoesNfe);
+
+  Future<void> _selecionar(_Documento d) async {
     setState(() {
-      _selecionado = f;
-      _png = null;
+      _sel = d;
+      _pngs = [];
       _erro = null;
     });
     try {
-      final png = await _danfe().imagemPng(pdf: _opcoesPdf);
-      if (mounted && _selecionado == f) setState(() => _png = png);
+      final pngs = d.nfce
+          ? [await _nfce().imagemPng(pdf: _opcoesPdf)]
+          : await _nfe().imagensPng(opcoes: _opcoesNfe);
+      if (mounted && _sel == d) setState(() => _pngs = pngs);
     } catch (e) {
       if (mounted) setState(() => _erro = '$e');
     }
   }
 
   String get _base {
-    final p = _selecionado!.path;
+    final p = _sel!.arquivo.path;
     return p.substring(0, p.lastIndexOf('-'));
   }
 
@@ -106,10 +134,19 @@ class _DanfePageState extends State<DanfePage> {
     }
   }
 
-  Future<void> _salvar(String ext, Future<List<int>> Function() gerar) => _acao('salvar $ext', () async {
+  Future<void> _salvar(String ext, Future<List<int>> Function() gerar) =>
+      _acao('salvar $ext', () async {
         final f = File('$_base-danfe.$ext');
         await f.writeAsBytes(await gerar());
         widget.log('DANFE salvo: ${f.path}');
+      });
+
+  Future<void> _salvarPngs() => _acao('salvar png', () async {
+        for (var i = 0; i < _pngs.length; i++) {
+          final f = File(_pngs.length == 1 ? '$_base-danfe.png' : '$_base-danfe-folha${i + 1}.png');
+          await f.writeAsBytes(_pngs[i]);
+          widget.log('DANFE salvo: ${f.path}');
+        }
       });
 
   Future<void> _escolherImpressora() async {
@@ -136,27 +173,28 @@ class _DanfePageState extends State<DanfePage> {
 
   @override
   Widget build(BuildContext context) {
-    final sel = _selecionado;
+    final sel = _sel;
+    final nfce = sel?.nfce ?? false;
     return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SizedBox(
         width: 380,
         child: Column(children: [
           ListTile(
-            title: const Text('NFC-e gravadas'),
+            title: const Text('Notas gravadas'),
             trailing: IconButton(icon: const Icon(Icons.refresh), onPressed: _listar),
           ),
           Expanded(
-            child: _arquivos.isEmpty
-                ? const Center(child: Text('Nenhuma NFC-e. Emita uma na aba Emissão.'))
+            child: _docs.isEmpty
+                ? const Center(child: Text('Nenhuma nota. Emita uma na aba Emissão.'))
                 : ListView(children: [
-                    for (final f in _arquivos)
+                    for (final d in _docs)
                       ListTile(
                         dense: true,
-                        selected: f.path == sel?.path,
-                        title: Text(f.uri.pathSegments.last.substring(0, 44),
-                            style: const TextStyle(fontFamily: 'Consolas', fontSize: 12)),
-                        subtitle: Text(f.path.contains('pendentes') ? 'Contingência pendente' : 'Autorizada'),
-                        onTap: () => _selecionar(f),
+                        selected: d.arquivo.path == sel?.arquivo.path,
+                        leading: Icon(d.nfce ? Icons.receipt : Icons.description_outlined),
+                        title: Text(d.chave, style: const TextStyle(fontFamily: 'Consolas', fontSize: 12)),
+                        subtitle: Text(d.situacao),
+                        onTap: () => _selecionar(d),
                       ),
                   ]),
           ),
@@ -174,41 +212,43 @@ class _DanfePageState extends State<DanfePage> {
                       onPressed: _ocupado
                           ? null
                           : () => _acao('imprimir PDF', () async {
-                                final pdf = await _danfe().pdf(_opcoesPdf);
-                                await Printing.layoutPdf(onLayout: (_) => pdf, name: 'DANFE NFC-e');
+                                final pdf = await _pdf();
+                                await Printing.layoutPdf(
+                                    onLayout: (_) => pdf, name: nfce ? 'DANFE NFC-e' : 'DANFE NF-e');
                               }),
                       icon: const Icon(Icons.print),
                       label: const Text('Imprimir PDF (diálogo do Windows)'),
                     ),
-                    FilledButton.tonalIcon(
-                      onPressed: _ocupado || cfg.impressora.isEmpty
-                          ? null
-                          : () => _acao('imprimir ESC/POS', () async {
-                                imprimirRawWindows(cfg.impressora, _danfe().escPos(_opcoesEscPos));
-                                widget.log('ESC/POS enviado para "${cfg.impressora}"');
-                              }),
-                      icon: const Icon(Icons.receipt_long),
-                      label: Text(cfg.impressora.isEmpty
-                          ? 'Imprimir ESC/POS (escolha a impressora)'
-                          : 'Imprimir ESC/POS em "${cfg.impressora}"'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _escolherImpressora,
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Impressora'),
-                    ),
+                    if (nfce) ...[
+                      FilledButton.tonalIcon(
+                        onPressed: _ocupado || cfg.impressora.isEmpty
+                            ? null
+                            : () => _acao('imprimir ESC/POS', () async {
+                                  imprimirRawWindows(cfg.impressora, _nfce().escPos(_opcoesEscPos));
+                                  widget.log('ESC/POS enviado para "${cfg.impressora}"');
+                                }),
+                        icon: const Icon(Icons.receipt_long),
+                        label: Text(cfg.impressora.isEmpty
+                            ? 'Imprimir ESC/POS (escolha a impressora)'
+                            : 'Imprimir ESC/POS em "${cfg.impressora}"'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _escolherImpressora,
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Impressora'),
+                      ),
+                    ],
+                    OutlinedButton(onPressed: () => _salvar('pdf', _pdf), child: const Text('Salvar PDF')),
                     OutlinedButton(
-                        onPressed: () => _salvar('pdf', () => _danfe().pdf(_opcoesPdf)),
-                        child: const Text('Salvar PDF')),
-                    OutlinedButton(
-                        onPressed: () => _salvar('png', () => _danfe().imagemPng(pdf: _opcoesPdf)),
-                        child: const Text('Salvar PNG')),
-                    OutlinedButton(
-                        onPressed: () => _salvar('txt', () async => utf8.encode(_danfe().texto())),
-                        child: const Text('Salvar TXT')),
-                    OutlinedButton(
-                        onPressed: () => _salvar('bin', () async => _danfe().escPos(_opcoesEscPos)),
-                        child: const Text('Salvar ESC/POS (.bin)')),
+                        onPressed: _pngs.isEmpty ? null : _salvarPngs, child: const Text('Salvar PNG')),
+                    if (nfce) ...[
+                      OutlinedButton(
+                          onPressed: () => _salvar('txt', () async => utf8.encode(_nfce().texto())),
+                          child: const Text('Salvar TXT')),
+                      OutlinedButton(
+                          onPressed: () => _salvar('bin', () async => _nfce().escPos(_opcoesEscPos)),
+                          child: const Text('Salvar ESC/POS (.bin)')),
+                    ],
                   ]),
                 ),
                 Expanded(
@@ -217,14 +257,23 @@ class _DanfePageState extends State<DanfePage> {
                     alignment: Alignment.topCenter,
                     child: _erro != null
                         ? Padding(padding: const EdgeInsets.all(16), child: Text('Erro: $_erro'))
-                        : _png == null
+                        : _pngs.isEmpty
                             ? const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())
-                            : SingleChildScrollView(
+                            : ListView(
                                 padding: const EdgeInsets.all(16),
-                                child: Material(
-                                  elevation: 3,
-                                  child: Image.memory(_png!, width: 380, fit: BoxFit.fitWidth),
-                                ),
+                                children: [
+                                  for (final png in _pngs)
+                                    Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(bottom: 16),
+                                        child: Material(
+                                          elevation: 3,
+                                          child: Image.memory(png,
+                                              width: nfce ? 380 : 760, fit: BoxFit.fitWidth),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                   ),
                 ),

@@ -19,3 +19,11 @@ extension DanfeNfceImagem on DanfeNfce {
     return pagina.toPng();
   }
 }
+
+extension DanfeNfeImagem on DanfeNfe {
+  /// Um PNG por folha do DANFE NF-e (A4). 150 dpi gera ~1240 × 1754 px por folha.
+  Future<List<Uint8List>> imagensPng({double dpi = 150, OpcoesDanfeNfe opcoes = const OpcoesDanfeNfe()}) async {
+    final bytes = await pdf(opcoes);
+    return [await for (final p in Printing.raster(bytes, dpi: dpi)) await p.toPng()];
+  }
+}
