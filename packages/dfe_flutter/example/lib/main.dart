@@ -125,6 +125,8 @@ class _HomePageState extends State<HomePage> {
               (e) => e.emitir(ModeloDocumento.nfe, tp: svc)),
           botao('Consultar última NF-e', Icons.search, (e) => e.consultar(ModeloDocumento.nfe)),
           botao('Cancelar última NF-e', Icons.block, (e) => e.cancelarUltima(ModeloDocumento.nfe)),
+          botao('Carta de Correção (última NF-e)', Icons.edit_note, (e) => e.cartaCorrecaoUltima(
+              correcao: 'CORRECAO DE TESTE EM HOMOLOGACAO: ENDERECO DE ENTREGA RUA B, 20')),
         ]),
         grupo('NFC-e (modelo 65)', [
           botao('Status NFC-e', Icons.wifi_tethering, (e) => e.status(ModeloDocumento.nfce)),
@@ -248,6 +250,12 @@ class _HomePageState extends State<HomePage> {
         }, (v) => cfg.pagamento = v),
         campo('Desconto na venda (R\$, rateado)', cfg.desconto.toStringAsFixed(2),
             (v) => cfg.desconto = double.tryParse(v.replaceAll(',', '.')) ?? 0, largura: 220),
+      ]),
+      secao('Reforma tributária (IBS/CBS) — alíquotas de teste 2026: CBS 0,9% e IBS 0,1%', [
+        _opcao('Enviar IBS/CBS', cfg.ibsCbs ? 's' : 'n', {'n': 'Não enviar', 's': 'Enviar nos itens'},
+            (v) => cfg.ibsCbs = v == 's'),
+        campo('CST IBS/CBS', cfg.ibsCbsCst, (v) => cfg.ibsCbsCst = v.trim(), largura: 140),
+        campo('cClassTrib', cfg.cClassTrib, (v) => cfg.cClassTrib = v.trim(), largura: 160),
       ]),
       secao('Responsável técnico (infRespTec) — deixe o CNPJ vazio para não enviar', [
         campo('CNPJ', cfg.respTecCnpj, (v) => cfg.respTecCnpj = v.replaceAll(RegExp(r'\D'), '')),

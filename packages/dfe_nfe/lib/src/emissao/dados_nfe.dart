@@ -82,7 +82,19 @@ class ItemNfe {
     this.seguro = 0,
     this.outrasDespesas = 0,
     this.valorTributos,
+    this.ibsCbs,
   });
+
+  /// IBS/CBS da reforma tributária (NT 2025.002); nulo = grupo não informado.
+  final IbsCbs? ibsCbs;
+
+  /// Base do IBS/CBS no período de transição: base do item menos ICMS, FCP,
+  /// PIS e COFINS.
+  double get baseIbsCbs {
+    final b = baseCalculo;
+    final t = icms.totais(b);
+    return arredondar(b - t.vICMS - t.vFCP - pis.valor(b) - cofins.valor(b));
+  }
 
   final String codigo;
   final String gtin;
@@ -222,13 +234,22 @@ class DadosNfe {
 /// Totais da nota (ICMSTot).
 class TotaisNfe {
   TotaisNfe._(this.icms, this.vProd, this.vFrete, this.vSeg, this.vDesc, this.vOutro, this.vIPI,
-      this.vPIS, this.vCOFINS, this.vTotTrib);
+      this.vPIS, this.vCOFINS, this.vTotTrib, this.ibsCbs);
+
+  /// Soma do IBS/CBS dos itens; nulo se nenhum item informa o grupo.
+  final ValoresIbsCbs? ibsCbs;
 
   factory TotaisNfe.calcular(List<ItemNfe> itens) {
     var icms = const TotaisIcms();
     double vProd = 0, vFrete = 0, vSeg = 0, vDesc = 0, vOutro = 0, vIPI = 0, vPIS = 0, vCOFINS = 0, vTrib = 0;
+    ValoresIbsCbs? ibsCbs;
     for (final i in itens) {
       final b = i.baseCalculo;
+      if (i.ibsCbs != null) {
+        final base = i.baseIbsCbs;
+        final v = i.ibsCbs!.valores(base);
+        ibsCbs = (ibsCbs ?? const ValoresIbsCbs()) + v;
+      }
       icms = icms + i.icms.totais(b);
       vProd += i.valorTotal;
       vFrete += i.frete;
@@ -252,6 +273,7 @@ class TotaisNfe {
         vFCPST: r(icms.vFCPST),
       ),
       r(vProd), r(vFrete), r(vSeg), r(vDesc), r(vOutro), r(vIPI), r(vPIS), r(vCOFINS), r(vTrib),
+      ibsCbs,
     );
   }
 

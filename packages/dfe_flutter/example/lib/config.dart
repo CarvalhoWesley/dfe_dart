@@ -41,6 +41,11 @@ class ConfigApp {
   String pagamento = 'dinheiro'; // dinheiro | credito | debito | pix | misto
   double desconto = 0;
 
+  // Reforma tributária (IBS/CBS) — alíquotas de teste de 2026
+  bool ibsCbs = false;
+  String ibsCbsCst = '000';
+  String cClassTrib = '000001';
+
   // Responsável técnico (infRespTec) — vazio = não envia
   String respTecCnpj = '';
   String respTecContato = '';
@@ -78,6 +83,7 @@ class ConfigApp {
         'impressora': impressora, 'colunas': colunas, 'itemDuasLinhas': itemDuasLinhas,
         'modoQr': modoQr, 'paginaCodigo': paginaCodigo, 'corte': corte, 'abrirGaveta': abrirGaveta,
         'tributacao': tributacao, 'pagamento': pagamento, 'desconto': desconto,
+        'ibsCbs': ibsCbs, 'ibsCbsCst': ibsCbsCst, 'cClassTrib': cClassTrib,
         'respTecCnpj': respTecCnpj, 'respTecContato': respTecContato,
         'respTecEmail': respTecEmail, 'respTecFone': respTecFone,
       };
@@ -116,6 +122,9 @@ class ConfigApp {
     tributacao = v('tributacao', tributacao);
     pagamento = v('pagamento', pagamento);
     desconto = (j['desconto'] as num?)?.toDouble() ?? desconto;
+    ibsCbs = v('ibsCbs', ibsCbs);
+    ibsCbsCst = v('ibsCbsCst', ibsCbsCst);
+    cClassTrib = v('cClassTrib', cClassTrib);
     respTecCnpj = v('respTecCnpj', respTecCnpj);
     respTecContato = v('respTecContato', respTecContato);
     respTecEmail = v('respTecEmail', respTecEmail);

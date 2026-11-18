@@ -108,6 +108,7 @@ class EmissaoTeste {
           cofins: cofins,
           desconto: desconto,
           valorTributos: arredondar(qtd * unit * 0.1345), // estimativa IBPT para teste
+          ibsCbs: cfg.ibsCbs ? IbsCbs(cst: cfg.ibsCbsCst, classificacao: cfg.cClassTrib) : null,
         );
     final base = [item('0001', 'PRODUTO DE TESTE A', 1, 10, 0), item('0002', 'PRODUTO DE TESTE B', 2, 12.5, 0)];
     final descontos = ratear(cfg.desconto, base);
@@ -316,6 +317,44 @@ class EmissaoTeste {
       if (r.procEventoXml != null) {
         final p = _gravar(pasta, '${alvo.chave}-110111-01-procEventoNFe.xml', r.procEventoXml!);
         log('  Cancelamento registrado (protocolo ${ev!.nProt}): $p');
+      }
+    } finally {
+      s.fechar();
+    }
+  }
+
+  /// Envia uma CC-e para a última NF-e autorizada e não cancelada, usando a
+  /// próxima sequência (conta as CC-e já registradas na pasta).
+  Future<void> cartaCorrecaoUltima({required String correcao}) async {
+    const modelo = ModeloDocumento.nfe;
+    final alvo = _ultimaAutorizada(modelo);
+    if (alvo == null) {
+      log('Nenhuma NF-e autorizada e não cancelada para corrigir.');
+      return;
+    }
+    final pasta = _pasta(modelo);
+    final sequencia = pasta
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.uri.pathSegments.last.startsWith('${alvo.chave}-110110-'))
+            .where((f) => f.path.endsWith('-procEventoNFe.xml'))
+            .length +
+        1;
+    log('CC-e nº $sequencia para ${alvo.chave}');
+    final s = _servicos(modelo);
+    try {
+      final r = await s.cartaCorrecao(
+          chave: alvo.chave, correcao: correcao, sequencia: sequencia, idLote: cfg.idLote++);
+      cfg.salvar();
+      final seq = sequencia.toString().padLeft(2, '0');
+      _gravar(pasta, '${alvo.chave}-110110-$seq-ped-cce.xml', r.envioXml);
+      _gravar(pasta, '${alvo.chave}-110110-$seq-cce.xml', r.retornoXml);
+      log('  Lote: cStat ${r.lote.cStat} - ${r.lote.xMotivo}');
+      final ev = r.retEvento;
+      if (ev != null) log('  Evento: cStat ${ev.cStat} - ${ev.xMotivo}');
+      if (r.procEventoXml != null) {
+        final p = _gravar(pasta, '${alvo.chave}-110110-$seq-procEventoNFe.xml', r.procEventoXml!);
+        log('  CC-e registrada (protocolo ${ev!.nProt}): $p');
       }
     } finally {
       s.fechar();

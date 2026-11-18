@@ -199,20 +199,74 @@ class ServicosNfe {
     String? cnpj,
     int sequencia = 1,
   }) async {
-    final evento = montarEventoCancelamento(
-      chave: chave,
-      protocolo: protocolo,
-      justificativa: justificativa,
-      cnpj: cnpj ?? chave.substring(6, 20),
-      ambiente: config.ambiente,
-      certificado: config.certificado,
-      sequencia: sequencia,
+    return _enviarEvento(
+      (data) => montarEventoCancelamento(
+        chave: chave,
+        protocolo: protocolo,
+        justificativa: justificativa,
+        cnpj: cnpj ?? chave.substring(6, 20),
+        ambiente: config.ambiente,
+        certificado: config.certificado,
+        sequencia: sequencia,
+        dataEvento: data,
+      ),
+      chave,
+      idLote,
     );
-    final envio = montarEnvEvento([evento], idLote: idLote);
-    final ret = await _enviar(
-        ServicoNfe.recepcaoEvento, _url(ServicoNfe.recepcaoEvento, chave), envio);
-    final lote = RetEnvEvento.fromXml(ret);
-    final retEvento = lote.eventos.firstOrNull;
+  }
+
+  /// Envia uma Carta de Correção (CC-e, evento 110110) — somente NF-e.
+  ///
+  /// [sequencia] deve ser a próxima da nota (1 para a primeira CC-e).
+  Future<ResultadoEvento> cartaCorrecao({
+    required String chave,
+    required String correcao,
+    required int sequencia,
+    required int idLote,
+    String? cnpj,
+  }) {
+    return _enviarEvento(
+      (data) => montarEventoCartaCorrecao(
+        chave: chave,
+        correcao: correcao,
+        cnpj: cnpj ?? chave.substring(6, 20),
+        ambiente: config.ambiente,
+        certificado: config.certificado,
+        sequencia: sequencia,
+        dataEvento: data,
+      ),
+      chave,
+      idLote,
+    );
+  }
+
+  /// Envia o evento. Se for rejeitado e o `dhEvento` enviado estiver à frente
+  /// do `dhRegEvento` da SEFAZ (relógio do servidor de eventos atrasado — visto
+  /// na SEFAZ-SP como cStat 999), reassina com o horário da SEFAZ e reenvia uma
+  /// vez. A rejeição não consome a sequência do evento.
+  Future<ResultadoEvento> _enviarEvento(
+      EventoNfe Function(DateTime? dataEvento) montar, String chave, int idLote) async {
+    var evento = montar(null);
+    var envio = montarEnvEvento([evento], idLote: idLote);
+    final url = _url(ServicoNfe.recepcaoEvento, chave);
+    var ret = await _enviar(ServicoNfe.recepcaoEvento, url, envio);
+    var lote = RetEnvEvento.fromXml(ret);
+    var retEvento = lote.eventos.firstOrNull;
+
+    final enviado = _dhEvento(evento.xml);
+    final registro = retEvento?.dataRegistro;
+    if (retEvento != null &&
+        !retEvento.registrado &&
+        enviado != null &&
+        registro != null &&
+        enviado.isAfter(registro)) {
+      evento = montar(registro.subtract(const Duration(seconds: 2)));
+      envio = montarEnvEvento([evento], idLote: idLote);
+      ret = await _enviar(ServicoNfe.recepcaoEvento, url, envio);
+      lote = RetEnvEvento.fromXml(ret);
+      retEvento = lote.eventos.firstOrNull;
+    }
+
     return ResultadoEvento(
       envioXml: envio,
       retornoXml: ret,
@@ -223,6 +277,11 @@ class ServicosNfe {
           ? montarProcEventoNfe(evento, retEvento)
           : null,
     );
+  }
+
+  static DateTime? _dhEvento(String xml) {
+    final m = RegExp(r'<dhEvento>([^<]+)</dhEvento>').firstMatch(xml);
+    return m == null ? null : DateTime.tryParse(m.group(1)!);
   }
 
   /// Inutiliza uma faixa de numeração ([numeroInicial] a [numeroFinal]).

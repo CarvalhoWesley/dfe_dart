@@ -455,3 +455,88 @@ class _IpiNt extends Ipi {
   @override
   String xml(double base) => '<IPI>${_t('cEnq', enquadramento)}<IPINT>${_t('CST', cst)}</IPINT></IPI>';
 }
+
+// =============================================================================
+// IBS / CBS (reforma tributária — NT 2025.002)
+// =============================================================================
+
+/// Grupo `IBSCBS` do item.
+///
+/// Em 2026 as alíquotas de teste são CBS 0,9% e IBS 0,1% (UF) / 0% (município)
+/// e os valores **não** entram no vNF.
+class IbsCbs {
+  /// Tributação com cálculo do IBS (UF e município) e da CBS (CST 000, 200...).
+  const IbsCbs({
+    this.cst = '000',
+    required this.classificacao,
+    this.aliquotaIbsUf = 0.1,
+    this.aliquotaIbsMun = 0,
+    this.aliquotaCbs = 0.9,
+  }) : calcular = true;
+
+  /// Somente CST e cClassTrib, sem o grupo de valores (ex.: CST 410 — imunidade
+  /// e não incidência).
+  const IbsCbs.semCalculo({required this.cst, required this.classificacao})
+      : calcular = false,
+        aliquotaIbsUf = 0,
+        aliquotaIbsMun = 0,
+        aliquotaCbs = 0;
+
+  /// CST do IBS/CBS (3 dígitos).
+  final String cst;
+
+  /// Código de classificação tributária (cClassTrib, 6 dígitos).
+  final String classificacao;
+  final double aliquotaIbsUf;
+  final double aliquotaIbsMun;
+  final double aliquotaCbs;
+  final bool calcular;
+
+  /// Valores calculados sobre a [base] (vBC do IBS/CBS).
+  ValoresIbsCbs valores(double base) => calcular
+      ? ValoresIbsCbs(
+          base: base,
+          ibsUf: arredondar(base * aliquotaIbsUf / 100),
+          ibsMun: arredondar(base * aliquotaIbsMun / 100),
+          cbs: arredondar(base * aliquotaCbs / 100),
+        )
+      : const ValoresIbsCbs();
+
+  String xml(double base) {
+    final b = StringBuffer('<IBSCBS>${_t('CST', cst)}${_t('cClassTrib', classificacao)}');
+    if (calcular) {
+      final v = valores(base);
+      b
+        ..write('<gIBSCBS>${_t('vBC', _v(base))}')
+        ..write('<gIBSUF>${_t('pIBSUF', _p(aliquotaIbsUf))}${_t('vIBSUF', _v(v.ibsUf))}</gIBSUF>')
+        ..write('<gIBSMun>${_t('pIBSMun', _p(aliquotaIbsMun))}${_t('vIBSMun', _v(v.ibsMun))}</gIBSMun>')
+        ..write(_t('vIBS', _v(v.ibs)))
+        ..write('<gCBS>${_t('pCBS', _p(aliquotaCbs))}${_t('vCBS', _v(v.cbs))}</gCBS>')
+        ..write('</gIBSCBS>');
+    }
+    b.write('</IBSCBS>');
+    return b.toString();
+  }
+}
+
+/// Valores de IBS/CBS de um item ou da nota.
+class ValoresIbsCbs {
+  const ValoresIbsCbs({this.base = 0, this.ibsUf = 0, this.ibsMun = 0, this.cbs = 0});
+  final double base;
+  final double ibsUf;
+  final double ibsMun;
+  final double cbs;
+
+  double get ibs => arredondar(ibsUf + ibsMun);
+
+  ValoresIbsCbs operator +(ValoresIbsCbs o) =>
+      ValoresIbsCbs(base: base + o.base, ibsUf: ibsUf + o.ibsUf, ibsMun: ibsMun + o.ibsMun, cbs: cbs + o.cbs);
+
+  /// Grupo `IBSCBSTot` do total da nota.
+  String xmlTotal() => '<IBSCBSTot>${_t('vBCIBSCBS', _v(arredondar(base)))}'
+      '<gIBS><gIBSUF>${_t('vDif', _v(0))}${_t('vDevTrib', _v(0))}${_t('vIBSUF', _v(arredondar(ibsUf)))}</gIBSUF>'
+      '<gIBSMun>${_t('vDif', _v(0))}${_t('vDevTrib', _v(0))}${_t('vIBSMun', _v(arredondar(ibsMun)))}</gIBSMun>'
+      '${_t('vIBS', _v(ibs))}${_t('vCredPres', _v(0))}${_t('vCredPresCondSus', _v(0))}</gIBS>'
+      '<gCBS>${_t('vDif', _v(0))}${_t('vDevTrib', _v(0))}${_t('vCBS', _v(arredondar(cbs)))}'
+      '${_t('vCredPres', _v(0))}${_t('vCredPresCondSus', _v(0))}</gCBS></IBSCBSTot>';
+}

@@ -43,9 +43,10 @@ dfe_dart/
 - Status do serviço (cStat 107) via transporte nativo.
 - Windows: chave importada com `PKCS12_NO_PERSIST_KEY`; importar via CNG (`PKCS12_ALWAYS_CNG_KSP`) quebrou a conexão com a SEFAZ-SP.
 
-### Fase 1 — Gerador de modelos ⏳ pendente
+### Fase 1 — Gerador de modelos ⏸ adiado
 - Gerador lendo `NFe.Classes`/`DFe.Classes` (C#) → classes Dart com `toXml()`/`fromXml()`.
 - Pronto quando: ida e volta sem diferenças em XMLs reais.
+- **Adiado (2026-11-17):** o modelo simplificado atende o PDV. Retomar quando for preciso ler XMLs de terceiros (DF-e) ou cobrir segmentos específicos.
 
 ### Fase 2 — NFC-e ✅ (SP)
 - Autorização síncrona, consulta, cancelamento, contingência offline (tpEmis 9) com reenvio, QR Code v2/v3.
@@ -55,7 +56,8 @@ dfe_dart/
 
 ### Fase 3 — NF-e ✅ parcial
 - Feito: autorização síncrona/assíncrona (recibo), contingência SVC-AN/SVC-RS, consulta, cancelamento.
-- Pendente: **CC-e**, manifestação do destinatário, distribuição DF-e, consulta de cadastro, EPEC.
+- CC-e (evento 110110) implementada. Na SEFAZ-SP retornou 999 com o servidor de eventos ~10 s atrasado; a biblioteca reenvia com o horário de registro da SEFAZ. **Reenvio ainda não validado.**
+- Pendente: manifestação do destinatário, distribuição DF-e, consulta de cadastro, EPEC.
 
 ### Fase 4 — Impressão ✅
 - DANFE NFC-e: texto (48/32 col.), PDF bobina, PNG, ESC/POS (CP860/CP850/sem acento, QR nativo ou raster, corte, gaveta).
@@ -67,8 +69,9 @@ dfe_dart/
 - Desconto, frete, seguro e outras despesas por item; totais calculados.
 - Pagamentos múltiplos, cartão (`card`), troco; `infRespTec`.
 
-### Fase 6 — Reforma tributária ⏳ pendente
-- Grupos IBS/CBS (NT 2025.002) nos itens e totais.
+### Fase 6 — Reforma tributária ✅ (grupos básicos)
+- Grupos IBS/CBS (NT 2025.002) no item e IBSCBSTot no total, alíquotas de teste 2026; **autorizado na SEFAZ-SP (cStat 100)**.
+- Pendente: diferimento, redução, crédito presumido, monofásico, IS.
 
 ### Plataformas ⏳ pendente
 - Validar Android (GPOS780S), Linux, iOS/macOS.

@@ -55,9 +55,9 @@ class RetConsSitNfe {
 }
 
 // ---------------------------------------------------------------------------
-// Eventos (cancelamento)
+// Eventos (cancelamento e carta de correção)
 
-/// Evento de cancelamento (tpEvento 110111), já assinado.
+/// Evento da NF-e (cancelamento 110111, CC-e 110110), já assinado.
 class EventoNfe {
   EventoNfe._(this.xml, this.id, this.chave, this.tipo, this.sequencia);
   final String xml;
@@ -79,15 +79,81 @@ EventoNfe montarEventoCancelamento({
   DateTime? dataEvento,
 }) {
   _validarJustificativa(justificativa);
-  const tipo = '110111';
+  return _montarEvento(
+    tipo: '110111',
+    detalhe: '${_t('descEvento', 'Cancelamento')}${_t('nProt', protocolo)}${_t('xJust', justificativa)}',
+    chave: chave,
+    cnpj: cnpj,
+    ambiente: ambiente,
+    certificado: certificado,
+    sequencia: sequencia,
+    dataEvento: dataEvento,
+  );
+}
+
+/// Texto legal obrigatório da CC-e (versão sem acentos, aceita por todas as UFs;
+/// a SEFAZ-MT exige esta forma).
+const condicaoUsoCartaCorrecao =
+    'A Carta de Correcao e disciplinada pelo paragrafo 1o-A do art. 7o do Convenio S/N, de 15 de '
+    'dezembro de 1970 e pode ser utilizada para regularizacao de erro ocorrido na emissao de documento '
+    'fiscal, desde que o erro nao esteja relacionado com: I - as variaveis que determinam o valor do '
+    'imposto tais como: base de calculo, aliquota, diferenca de preco, quantidade, valor da operacao ou '
+    'da prestacao; II - a correcao de dados cadastrais que implique mudanca do remetente ou do '
+    'destinatario; III - a data de emissao ou de saida.';
+
+/// Monta e assina a Carta de Correção Eletrônica (tpEvento 110110).
+///
+/// Somente NF-e (modelo 55). Cada nova CC-e da mesma nota usa a próxima
+/// [sequencia] (1 a 20) e substitui integralmente a anterior.
+EventoNfe montarEventoCartaCorrecao({
+  required String chave,
+  required String correcao,
+  required String cnpj,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  int sequencia = 1,
+  DateTime? dataEvento,
+}) {
+  if (chave.substring(20, 22) != '55') {
+    throw ArgumentError('Carta de Correção é permitida somente para NF-e (modelo 55)');
+  }
+  final texto = correcao.trim();
+  if (texto.length < 15 || texto.length > 1000) {
+    throw ArgumentError('Correção deve ter de 15 a 1000 caracteres');
+  }
+  if (sequencia < 1 || sequencia > 20) {
+    throw ArgumentError('Sequência da CC-e deve ser de 1 a 20');
+  }
+  return _montarEvento(
+    tipo: '110110',
+    detalhe: '${_t('descEvento', 'Carta de Correcao')}${_t('xCorrecao', texto)}'
+        '${_t('xCondUso', condicaoUsoCartaCorrecao)}',
+    chave: chave,
+    cnpj: cnpj,
+    ambiente: ambiente,
+    certificado: certificado,
+    sequencia: sequencia,
+    dataEvento: dataEvento,
+  );
+}
+
+EventoNfe _montarEvento({
+  required String tipo,
+  required String detalhe,
+  required String chave,
+  required String cnpj,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  required int sequencia,
+  DateTime? dataEvento,
+}) {
   final id = 'ID$tipo$chave${sequencia.toString().padLeft(2, '0')}';
   final cOrgao = chave.substring(0, 2);
   final xml = '<evento xmlns="$nsNfe" versao="1.00"><infEvento Id="$id">'
       '${_t('cOrgao', cOrgao)}${_t('tpAmb', '${ambiente.codigo}')}${_t('CNPJ', cnpj)}'
       '${_t('chNFe', chave)}${_t('dhEvento', formatarDataHora(dataEvento ?? DateTime.now()))}'
       '${_t('tpEvento', tipo)}${_t('nSeqEvento', '$sequencia')}${_t('verEvento', '1.00')}'
-      '<detEvento versao="1.00">${_t('descEvento', 'Cancelamento')}'
-      '${_t('nProt', protocolo)}${_t('xJust', justificativa)}</detEvento>'
+      '<detEvento versao="1.00">$detalhe</detEvento>'
       '</infEvento></evento>';
   return EventoNfe._(assinarXml(xml, id, certificado), id, chave, tipo, sequencia);
 }
@@ -104,13 +170,13 @@ String montarEnvEvento(List<EventoNfe> eventos, {required int idLote}) {
 
 /// `retEvento` de um evento processado.
 class RetEvento {
-  RetEvento._(this.xml, this.cStat, this.xMotivo, this.chave, this.nProt);
+  RetEvento._(this.xml, this.cStat, this.xMotivo, this.chave, this.nProt, this.dataRegistro);
 
   factory RetEvento.deElemento(XmlElement e) {
     final inf = e.getElement('infEvento')!;
     String? t(String n) => inf.getElement(n)?.innerText;
-    return RetEvento._(
-        e.toXmlString(), int.parse(t('cStat')!), t('xMotivo') ?? '', t('chNFe') ?? '', t('nProt'));
+    return RetEvento._(e.toXmlString(), int.parse(t('cStat')!), t('xMotivo') ?? '', t('chNFe') ?? '',
+        t('nProt'), DateTime.tryParse(t('dhRegEvento') ?? ''));
   }
 
   final String xml;
@@ -118,6 +184,9 @@ class RetEvento {
   final String xMotivo;
   final String chave;
   final String? nProt;
+
+  /// Data/hora de registro do evento na SEFAZ (dhRegEvento).
+  final DateTime? dataRegistro;
 
   /// 135 registrado e vinculado; 155 cancelamento fora de prazo homologado.
   bool get registrado => cStat == 135 || cStat == 136 || cStat == 155;

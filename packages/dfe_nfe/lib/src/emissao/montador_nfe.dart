@@ -148,6 +148,7 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
       ..write(it.ipi?.xml(base) ?? '')
       ..write('<PIS>${it.pis.xml('PIS', base)}</PIS>')
       ..write('<COFINS>${it.cofins.xml('COFINS', base)}</COFINS>')
+      ..write(it.ibsCbs?.xml(it.baseIbsCbs) ?? '')
       ..write('</imposto></det>');
   }
 
@@ -165,7 +166,9 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
     x.write(_t(tag, v(valor)));
   }
   if (tot.vTotTrib > 0) x.write(_t('vTotTrib', v(tot.vTotTrib)));
-  x.write('</ICMSTot></total>');
+  x.write('</ICMSTot>');
+  if (tot.ibsCbs != null) x.write(tot.ibsCbs!.xmlTotal());
+  x.write('</total>');
 
   x.write('<transp>${_t('modFrete', '9')}</transp>');
 
