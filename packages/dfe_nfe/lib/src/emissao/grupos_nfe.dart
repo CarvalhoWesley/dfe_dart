@@ -1,5 +1,7 @@
 // Grupos adicionais da NF-e (ordem dos campos conforme as classes do Zeus):
 // NFref, retirada/entrega, autXML, infIntermed, cobr e transp.
+import '../tributacao/classes.g.dart';
+import '../tributacao/grupo.dart';
 import '../util/formatacao.dart';
 
 String _t(String tag, String v) => '<$tag>${escaparXml(v)}</$tag>';
@@ -228,7 +230,15 @@ class Veiculo {
 
 /// Volume transportado (grupo `vol`).
 class Volume {
-  const Volume({this.quantidade, this.especie, this.marca, this.numeracao, this.pesoLiquido, this.pesoBruto});
+  const Volume({
+    this.quantidade,
+    this.especie,
+    this.marca,
+    this.numeracao,
+    this.pesoLiquido,
+    this.pesoBruto,
+    this.lacres = const [],
+  });
   final int? quantidade;
   final String? especie;
   final String? marca;
@@ -236,23 +246,50 @@ class Volume {
   final double? pesoLiquido;
   final double? pesoBruto;
 
+  /// Números dos lacres (grupo `lacres`).
+  final List<String> lacres;
+
   String xml() => '<vol>${quantidade == null ? '' : _t('qVol', '$quantidade')}${_o('esp', especie)}'
       '${_o('marca', marca)}${_o('nVol', numeracao)}'
       '${pesoLiquido == null ? '' : _t('pesoL', formatarDecimal(pesoLiquido!, 3))}'
-      '${pesoBruto == null ? '' : _t('pesoB', formatarDecimal(pesoBruto!, 3))}</vol>';
+      '${pesoBruto == null ? '' : _t('pesoB', formatarDecimal(pesoBruto!, 3))}'
+      '${lacres.map((l) => '<lacres>${_t('nLacre', l)}</lacres>').join()}</vol>';
 }
 
 /// Transporte (grupo `transp`).
+///
+/// Ordem do schema: modFrete, transporta, retTransp, (veicTransp + reboque |
+/// vagao | balsa), vol. (O Zeus declara `vagao`/`balsa` depois de `vol`, o que
+/// o schema não aceita; aqui segue-se o schema.)
 class Transporte {
-  const Transporte({this.modalidadeFrete = 9, this.transportadora, this.veiculo, this.volumes = const []});
+  const Transporte({
+    this.modalidadeFrete = 9,
+    this.transportadora,
+    this.retencao,
+    this.veiculo,
+    this.reboques = const [],
+    this.vagao,
+    this.balsa,
+    this.volumes = const [],
+  });
 
   /// modFrete: 0 emitente, 1 destinatário, 2 terceiros, 3 próprio emitente,
   /// 4 próprio destinatário, 9 sem frete.
   final int modalidadeFrete;
   final Transportadora? transportadora;
+
+  /// Retenção do ICMS do transporte (grupo `retTransp`).
+  final RetTransp? retencao;
   final Veiculo? veiculo;
+
+  /// Reboques (grupo `reboque`, até 5).
+  final List<Reboque> reboques;
+  final String? vagao;
+  final String? balsa;
   final List<Volume> volumes;
 
   String xml() => '<transp>${_t('modFrete', '$modalidadeFrete')}${transportadora?.xml() ?? ''}'
-      '${veiculo?.xml() ?? ''}${volumes.map((v) => v.xml()).join()}</transp>';
+      '${retencao == null ? '' : serializarGrupoXml(retencao!)}'
+      '${veiculo?.xml() ?? ''}${reboques.map(serializarGrupoXml).join()}'
+      '${_o('vagao', vagao)}${_o('balsa', balsa)}${volumes.map((v) => v.xml()).join()}</transp>';
 }

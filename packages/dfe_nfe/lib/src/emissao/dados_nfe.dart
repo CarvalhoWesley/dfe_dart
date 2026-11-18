@@ -283,6 +283,16 @@ class DadosNfe {
     this.intermediador,
     this.cobranca,
     this.transporte,
+    this.municipioFatoGeradorIbs,
+    this.tipoNotaDebito,
+    this.tipoNotaCredito,
+    this.codigoIndicadorOperacao,
+    this.compraGovernamental,
+    this.pagamentoAntecipado = const [],
+    this.exportacao,
+    this.compra,
+    this.cana,
+    this.agropecuario,
   }) : dataEmissao = dataEmissao ?? DateTime.now();
 
   final ModeloDocumento modelo;
@@ -352,6 +362,36 @@ class DadosNfe {
   /// Transporte completo; se nulo, usa só [modalidadeFrete].
   final Transporte? transporte;
 
+  /// cMunFGIBS: município do fato gerador do IBS (reforma).
+  final int? municipioFatoGeradorIbs;
+
+  /// tpNFDebito (nota de débito, finNFe 5).
+  final String? tipoNotaDebito;
+
+  /// tpNFCredito (nota de crédito, finNFe 6).
+  final String? tipoNotaCredito;
+
+  /// cIndOp: indicador do local da operação de fornecimento (só NF-e).
+  final String? codigoIndicadorOperacao;
+
+  /// gCompraGov: compra governamental.
+  final GCompraGov? compraGovernamental;
+
+  /// gPagAntecipado: chaves das notas de pagamento antecipado.
+  final List<String> pagamentoAntecipado;
+
+  /// Grupo `exporta` (comércio exterior).
+  final Exporta? exportacao;
+
+  /// Grupo `compra` (empenho, pedido, contrato).
+  final Compra? compra;
+
+  /// Grupo `cana` (aquisição de cana-de-açúcar).
+  final Cana? cana;
+
+  /// Grupo `agropecuario` (defensivos ou guia de trânsito).
+  final Agropecuario? agropecuario;
+
   DadosNfe copiarCom({
     List<ItemNfe>? itens,
     Destinatario? destinatario,
@@ -394,5 +434,15 @@ class DadosNfe {
         intermediador: intermediador,
         cobranca: cobranca,
         transporte: transporte,
+        municipioFatoGeradorIbs: municipioFatoGeradorIbs,
+        tipoNotaDebito: tipoNotaDebito,
+        tipoNotaCredito: tipoNotaCredito,
+        codigoIndicadorOperacao: codigoIndicadorOperacao,
+        compraGovernamental: compraGovernamental,
+        pagamentoAntecipado: pagamentoAntecipado,
+        exportacao: exportacao,
+        compra: compra,
+        cana: cana,
+        agropecuario: agropecuario,
       );
 }

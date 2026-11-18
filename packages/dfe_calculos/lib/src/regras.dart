@@ -358,21 +358,20 @@ class RegraIbsCbs {
   final bool calcular;
 
   /// [base]: base da transição (base do item − ICMS − FCP − PIS − COFINS).
-  IbsCbs gerar(double base) {
-    if (!calcular) return IbsCbs(cst: cst, classificacao: classificacao);
+  IBSCBS gerar(double base) {
+    if (!calcular) return IBSCBS(cst: cst, cClassTrib: classificacao);
     final uf = arredondar(base * aliquotaIbsUf / 100);
     final mun = arredondar(base * aliquotaIbsMun / 100);
-    return IbsCbs(
+    return IBSCBS(
       cst: cst,
-      classificacao: classificacao,
-      vBC: base,
-      pIBSUF: aliquotaIbsUf,
-      vIBSUF: uf,
-      pIBSMun: aliquotaIbsMun,
-      vIBSMun: mun,
-      vIBS: arredondar(uf + mun),
-      pCBS: aliquotaCbs,
-      vCBS: arredondar(base * aliquotaCbs / 100),
+      cClassTrib: classificacao,
+      gIBSCBS: GIBSCBS(
+        vBC: base,
+        gIBSUF: GIBSUF(pIBSUF: aliquotaIbsUf, vIBSUF: uf),
+        gIBSMun: GIBSMun(pIBSMun: aliquotaIbsMun, vIBSMun: mun),
+        vIBS: arredondar(uf + mun),
+        gCBS: GCBS(pCBS: aliquotaCbs, vCBS: arredondar(base * aliquotaCbs / 100)),
+      ),
     );
   }
 }

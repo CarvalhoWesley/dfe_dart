@@ -5,6 +5,7 @@ import '../status/cons_stat_serv.dart' show nsNfe;
 import '../util/chave_acesso.dart';
 import '../util/csrt.dart';
 import '../util/formatacao.dart';
+import '../tributacao/grupo.dart';
 import 'dados_nfe.dart';
 
 /// Resultado da montagem: XML do `<NFe>` (sem assinatura) e a chave gerada.
@@ -54,14 +55,18 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
     ..write(_t('tpNF', '${d.tipoOperacao}'))
     ..write(_t('idDest', '${d.destinoOperacao}'))
     ..write(_t('cMunFG', '${d.emitente.endereco.codigoMunicipio}'))
+    ..write(d.municipioFatoGeradorIbs == null ? '' : _t('cMunFGIBS', '${d.municipioFatoGeradorIbs}'))
     ..write(_t('tpImp', nfce ? '4' : '1'))
     ..write(_t('tpEmis', '${d.tipoEmissao.codigo}'))
     ..write(_t('cDV', '${chave.digitoVerificador}'))
     ..write(_t('tpAmb', '${d.ambiente.codigo}'))
     ..write(_t('finNFe', '${d.finalidade}'))
+    ..write(d.tipoNotaDebito == null ? '' : _t('tpNFDebito', d.tipoNotaDebito!))
+    ..write(d.tipoNotaCredito == null ? '' : _t('tpNFCredito', d.tipoNotaCredito!))
     ..write(_t('indFinal', d.consumidorFinal ? '1' : '0'))
     ..write(_t('indPres', '${d.indicadorPresenca}'))
     ..write(d.indicadorIntermediador == null ? '' : _t('indIntermed', '${d.indicadorIntermediador}'))
+    ..write(d.codigoIndicadorOperacao == null ? '' : _t('cIndOp', d.codigoIndicadorOperacao!))
     ..write(_t('procEmi', '0'))
     ..write(_t('verProc', d.versaoAplicativo));
   if (d.tipoEmissao.contingencia) {
@@ -71,6 +76,10 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
   }
   for (final r in d.referencias) {
     x.write(r.xml());
+  }
+  if (d.compraGovernamental != null) x.write(serializarGrupoXml(d.compraGovernamental!));
+  if (d.pagamentoAntecipado.isNotEmpty) {
+    x.write('<gPagAntecipado>${d.pagamentoAntecipado.map((c) => _t('refNFe', c)).join()}</gPagAntecipado>');
   }
   x.write('</ide>');
 
@@ -182,6 +191,9 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
   if (d.informacoesComplementares != null) {
     x.write('<infAdic>${_t('infCpl', d.informacoesComplementares!)}</infAdic>');
   }
+  for (final g in [d.exportacao, d.compra, d.cana]) {
+    if (g != null) x.write(serializarGrupoXml(g));
+  }
 
   final rt = d.responsavelTecnico;
   if (rt != null) {
@@ -198,6 +210,7 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
     }
     x.write('</infRespTec>');
   }
+  if (d.agropecuario != null) x.write(serializarGrupoXml(d.agropecuario!));
 
   x.write('</infNFe></NFe>');
   return NfeMontada(x.toString(), chave);

@@ -27,6 +27,7 @@ const _total = TotalNfe(
 List<String> _filhos(XmlElement e) => e.childElements.map((c) => c.name.local).toList();
 
 void main() {
+  group("grupos complementares", _maisCampos);
   final m = montarNfe(DadosNfe(
     modelo: ModeloDocumento.nfe,
     ambiente: Ambiente.homologacao,
@@ -107,5 +108,64 @@ void main() {
     expect(_filhos(cobr), ['fat', 'dup']);
     expect(cobr.findAllElements('dVenc').single.innerText, '2026-12-18');
     expect(_filhos(inf.getElement('infIntermed')!), ['CNPJ', 'idCadIntTran']);
+  });
+}
+
+void _maisCampos() {
+  final m = montarNfe(DadosNfe(
+    modelo: ModeloDocumento.nfe,
+    ambiente: Ambiente.homologacao,
+    serie: 1,
+    numero: 8,
+    codigoNumerico: 12345678,
+    dataEmissao: DateTime(2026, 11, 18, 10),
+    finalidade: 1,
+    municipioFatoGeradorIbs: 3550308,
+    codigoIndicadorOperacao: '010104',
+    compraGovernamental: const GCompraGov(tpEnteGov: '1', pRedutor: 10, tpOperGov: '1'),
+    pagamentoAntecipado: const ['35261112345678000195550010000000011123456789'],
+    emitente: const Emitente(cnpj: '12345678000195', razaoSocial: 'E', inscricaoEstadual: '1', endereco: _end),
+    itens: const [_item],
+    total: _total,
+    pagamentos: const [Pagamento(tipo: '90', valor: 0)],
+    transporte: const Transporte(
+      modalidadeFrete: 0,
+      retencao: RetTransp(vServ: 100, vBCRet: 100, pICMSRet: 12, vICMSRet: 12, cfop: 5352, cMunFG: 3550308),
+      veiculo: Veiculo(placa: 'ABC1D23'),
+      reboques: [Reboque(placa: 'XYZ9A87', uf: 'SP')],
+      volumes: [Volume(quantidade: 1, lacres: ['L1', 'L2'])],
+    ),
+    informacoesComplementares: 'X',
+    exportacao: const Exporta(ufSaidaPais: 'SP', xLocExporta: 'SANTOS'),
+    compra: const Compra(xPed: 'PED1'),
+    cana: Cana(
+      safra: '2026/2027', ref: '11/2026', qTotMes: 10, qTotAnt: 0, qTotGer: 10, vFor: 100, vTotDed: 0,
+      vLiqFor: 100, forDia: const [ForDia(dia: 1, qtde: 10)],
+    ),
+    agropecuario: const Agropecuario(defensivo: [Defensivo(nReceituario: 'R1', cpfRespTec: '11144477735')]),
+  ));
+  final inf = XmlDocument.parse(m.xml).findAllElements('infNFe').single;
+
+  test('ide: cMunFGIBS, cIndOp, gCompraGov e gPagAntecipado', () {
+    final f = _filhos(inf.getElement('ide')!);
+    expect(f.indexOf('cMunFGIBS'), f.indexOf('cMunFG') + 1);
+    expect(f.indexOf('cIndOp'), f.indexOf('indPres') + 1);
+    expect(f.sublist(f.length - 2), ['gCompraGov', 'gPagAntecipado']);
+  });
+
+  test('transp com retTransp, reboque e lacres', () {
+    final t = inf.getElement('transp')!;
+    expect(_filhos(t), ['modFrete', 'retTransp', 'veicTransp', 'reboque', 'vol']);
+    expect(_filhos(t.getElement('vol')!), ['qVol', 'lacres', 'lacres']);
+  });
+
+  test('exporta, compra, cana (forDia com atributo) e agropecuário', () {
+    expect(_filhos(inf), [
+      'ide', 'emit', 'det', 'total', 'transp', 'pag', 'infAdic', 'exporta', 'compra', 'cana', 'agropecuario',
+    ]);
+    final fd = inf.findAllElements('forDia').single;
+    expect(fd.getAttribute('dia'), '1');
+    expect(_filhos(fd), ['qtde']);
+    expect(_filhos(inf.getElement('agropecuario')!.getElement('defensivo')!), ['nReceituario', 'CPFRespTec']);
   });
 }

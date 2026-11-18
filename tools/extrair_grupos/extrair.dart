@@ -28,13 +28,60 @@ const _classes = <String, String>{
 };
 
 class _Campo {
-  _Campo(this.nome, this.ordem, this.tipo, this.casas, this.opcional);
+  _Campo(this.nome, this.ordem, this.tipo, this.casas, this.opcional, {this.tipoCs = '', this.atributo = false});
+  final bool atributo;
   final String nome;
   final int ordem;
-  final String tipo; // dec | int | str
+  String tipo; // dec | int | str | grp
   final int? casas;
-  final bool opcional;
+  bool opcional;
+  final String tipoCs;
+  String? classe;
+  bool lista = false;
 }
+
+/// Raízes dos grupos aninhados (reforma tributária e afins), exportados com
+/// todos os subgrupos referenciados.
+const _raizesAninhadas = [
+  'IBSCBS', 'IS', 'IBSCBSTot', 'ISTot', 'gCompraGov', // reforma tributária
+  'exporta', 'compra', 'cana', 'agropecuario', 'retTransp', 'reboque', 'lacres', // NF-e
+];
+
+/// Lê todas as classes públicas dos arquivos .cs de [pastas].
+Map<String, List<_Campo>> _todasClasses(List<String> pastas) {
+  final r = <String, List<_Campo>>{};
+  for (final p in pastas) {
+    final dir = Directory(p);
+    if (!dir.existsSync()) continue;
+    for (final f in dir.listSync().whereType<File>().where((f) => f.path.endsWith('.cs'))) {
+      final src = f.readAsStringSync();
+      final ms = RegExp(r'public\s+(?:partial\s+)?class\s+(\w+)').allMatches(src).toList();
+      for (var i = 0; i < ms.length; i++) {
+        final corpo = src.substring(ms[i].end, i + 1 < ms.length ? ms[i + 1].start : src.length);
+        r.putIfAbsent(ms[i].group(1)!, () => _extrair(corpo, ms[i].group(1)!));
+      }
+    }
+  }
+  // Resolve tipos que são classes (subgrupos) e listas.
+  for (final campos in r.values) {
+    for (final c in campos) {
+      var t = c.tipoCs.replaceAll('?', '');
+      final lista = RegExp(r'^List<(\w+)>$').firstMatch(t);
+      if (lista != null) t = lista.group(1)!;
+      if (r.containsKey(t)) {
+        c
+          ..tipo = 'grp'
+          ..classe = t
+          ..lista = lista != null
+          ..opcional = true;
+      }
+    }
+  }
+  return r;
+}
+
+/// Nome da classe no Dart: `gIBSUF` → `GIBSUF`.
+String _classeDart(String zeus) => zeus[0].toUpperCase() + zeus.substring(1);
 
 void main(List<String> args) {
   final zeus = args[0];
@@ -74,10 +121,26 @@ void main(List<String> args) {
     _Campo('cEnq', 5, 'str', null, false),
   ];
 
+  final inf = '$zeus/NFe.Classes/Informacoes';
+  final todasZeus = _todasClasses(
+      [base, baseTotal, '$inf/Identificacao', inf, '$inf/Cana', '$inf/Agropecuario', '$inf/Transporte']);
+  final aninhadas = <String>[];
+  void visitar(String c) {
+    if (aninhadas.contains(c) || todos.containsKey(c)) return;
+    aninhadas.add(c);
+    todos[c] = todasZeus[c]!;
+    for (final f in todasZeus[c]!) {
+      if (f.classe != null) visitar(f.classe!);
+    }
+  }
+
+  _raizesAninhadas.forEach(visitar);
+
   for (final MapEntry(key: grupo, value: campos) in todos.entries) {
     b.writeln("  '$grupo': [");
     for (final c in campos) {
       b.writeln("    CampoGrupo('${c.nome}', TipoCampo.${c.tipo}${c.casas == null ? '' : ', casas: ${c.casas}'}"
+          "${c.classe == null ? '' : ", classe: '${c.classe}'"}${c.lista ? ', lista: true' : ''}${c.atributo ? ', atributo: true' : ''}"
           '${c.opcional ? ', opcional: true' : ''}),');
     }
     b.writeln('  ],');
@@ -90,6 +153,8 @@ void main(List<String> args) {
   final classes = StringBuffer()
     ..writeln('// GERADO por tools/extrair_grupos a partir do ZeusFiscal. NÃO EDITE À MÃO.')
     ..writeln('// ignore_for_file: lines_longer_than_80_chars')
+    ..writeln()
+    ..writeln("import 'grupo.dart';")
     ..writeln();
   void classe(String nome, String doc, List<String> grupos, {List<String> ignorar = const []}) {
     final campos = <String, _Campo>{};
@@ -152,6 +217,47 @@ void main(List<String> args) {
   classe('IssqnTot', 'Totais de ISSQN da nota (grupo `ISSQNtot`).', ['ISSQNtot']);
   classe('RetTrib', 'Retenção de tributos (grupo `retTrib`).', ['retTrib']);
 
+  // Classes aninhadas (uma por classe do Zeus), serializáveis por si.
+  for (final nome in aninhadas) {
+    final dartNome = _classeDart(nome);
+    final campos = todos[nome]!;
+    classes
+      ..writeln('/// Grupo `$nome` (classe `$nome` do Zeus). Valores informados pelo app.')
+      ..writeln('class $dartNome implements GrupoXml {')
+      ..writeln(campos.isEmpty ? '  const $dartNome();' : '  const $dartNome({');
+    for (final c in campos) {
+      classes.writeln('    ${c.opcional ? '' : 'required '}this.${_dart(c.nome)},');
+    }
+    if (campos.isNotEmpty) classes.writeln('  });');
+    classes.writeln();
+    for (final c in campos) {
+      var t = switch (c.tipo) {
+        'dec' => 'double',
+        'int' => 'int',
+        'grp' => _classeDart(c.classe!),
+        _ => 'String',
+      };
+      if (c.lista) t = 'List<$t>';
+      classes
+        ..writeln('  /// `${c.nome}`${c.casas == null ? '' : ' (${c.casas} casas)'}')
+        ..writeln('  final $t${c.opcional ? '?' : ''} ${_dart(c.nome)};');
+    }
+    classes
+      ..writeln()
+      ..writeln('  @override')
+      ..writeln("  String get grupo => '$nome';")
+      ..writeln()
+      ..writeln('  @override')
+      ..writeln('  Map<String, Object?> get valores => {');
+    for (final c in campos) {
+      classes.writeln("        '${c.nome}': ${_dart(c.nome)},");
+    }
+    classes
+      ..writeln('      };')
+      ..writeln('}')
+      ..writeln();
+  }
+
   final arqClasses = saida.replaceFirst('grupos.g.dart', 'classes.g.dart');
   File(arqClasses).writeAsStringSync(classes.toString());
   stdout.writeln('classes: $arqClasses');
@@ -161,14 +267,20 @@ void main(List<String> args) {
 /// (CST → cst, UFST → ufst); os demais mantêm o nome do XML (vICMS, pFCP...).
 String _dart(String xml) {
   if (xml == xml.toUpperCase()) return xml.toLowerCase();
+  // Sigla inicial seguida de palavra: CSTReg → cstReg, CNPJProd → cnpjProd.
+  final sigla = RegExp(r'^([A-Z]{2,})([A-Z][a-z])').firstMatch(xml);
+  if (sigla != null) return sigla.group(1)!.toLowerCase() + xml.substring(sigla.group(1)!.length);
   return xml[0].toLowerCase() + xml.substring(1);
 }
 
 List<_Campo> _extrair(String src, String grupo) {
-  // Remove comentários de documentação.
-  final limpo = src.replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '');
+  // Remove comentários de documentação e mantém o ramo #else das diretivas.
+  final limpo = src
+      .replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '')
+      .replaceAll(RegExp(r'#if[^\n]*\n[\s\S]*?#else[^\n]*\n'), '')
+      .replaceAll(RegExp(r'^\s*#(if|endif)[^\n]*$', multiLine: true), '');
   final re = RegExp(
-      r'(\[XmlElement\(([^\]]*)\)\]\s*)?public\s+([\w?<>\.]+)\s+(\w+)\s*(\{|$)',
+      r'(\[XmlElement\(([^\]]*)\)\]\s*)?public\s+([\w?<>\.]+)\s+@?(\w+)\s*(\{|$)',
       multiLine: true);
   final campos = <_Campo>[];
   var seq = 0;
@@ -178,6 +290,8 @@ List<_Campo> _extrair(String src, String grupo) {
     if (tipoCs == 'class' || tipoCs == 'bool' || nome.endsWith('Specified')) continue;
     if (RegExp(r'^(override|static|abstract|virtual)$').hasMatch(tipoCs)) continue;
     if (nome.startsWith('ShouldSerialize') || nome.endsWith('Proxy')) continue;
+    if (RegExp('ShouldSerialize$nome\\(\\)\\s*=>\\s*false').hasMatch(src)) continue;
+    if (RegExp(r'^(void|string\s*ToString)$').hasMatch(tipoCs)) continue;
     if (RegExp(r'\[XmlIgnore\]\s*$').hasMatch(limpo.substring(0, m.start).trimRight().split('\n').last)) {
       continue;
     }
@@ -199,12 +313,13 @@ List<_Campo> _extrair(String src, String grupo) {
       'int' || 'short' || 'long' => 'int',
       _ => 'str', // string e enums (o app informa o código)
     };
+    final atributo = RegExp(r'\[XmlAttribute[^\]]*\]\s*$').hasMatch(limpo.substring(0, m.start));
     final opcional = nulo ||
         t == 'string' ||
         src.contains('${nome}Specified') ||
         src.contains('ShouldSerialize$nome()') ||
         (t == 'string' && src.contains('string.IsNullOrEmpty($nome)'));
-    campos.add(_Campo(elem, ordem, tipo, tipo == 'dec' ? (casas ?? 2) : null, opcional));
+    campos.add(_Campo(elem, ordem, tipo, tipo == 'dec' ? (casas ?? 2) : null, opcional, tipoCs: tipoCs, atributo: atributo));
   }
   campos.sort((a, b) => a.ordem.compareTo(b.ordem));
   return campos;

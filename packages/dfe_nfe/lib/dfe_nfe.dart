@@ -6,7 +6,7 @@ export 'src/emissao/dados_nfe.dart';
 export 'src/emissao/emissor.dart';
 export 'src/emissao/montador_nfe.dart';
 export 'src/emissao/qrcode_nfce.dart';
-export 'src/tributacao/grupo.dart' show serializarGrupo, CampoGrupo, TipoCampo;
+export 'src/tributacao/grupo.dart' show serializarGrupo, serializarGrupoXml, CampoGrupo, TipoCampo, GrupoXml;
 export 'src/tributacao/grupos.g.dart';
 export 'src/enderecos.dart';
 export 'src/enums.dart';

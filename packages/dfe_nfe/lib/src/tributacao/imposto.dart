@@ -88,104 +88,6 @@ String _xmlIpi(IpiGeral i) {
   return '${envoltorio.substring(0, envoltorio.length - 6)}${serializarGrupo(grupo, i.valores)}</IPI>';
 }
 
-/// Grupo `IBSCBS` do item (reforma tributária, NT 2025.002). Valores
-/// informados pelo app; sem [vBC] o grupo leva apenas CST e cClassTrib.
-class IbsCbs {
-  const IbsCbs({
-    required this.cst,
-    required this.classificacao,
-    this.vBC,
-    this.pIBSUF = 0,
-    this.vIBSUF = 0,
-    this.pIBSMun = 0,
-    this.vIBSMun = 0,
-    this.vIBS,
-    this.pCBS = 0,
-    this.vCBS = 0,
-  });
-
-  final String cst;
-
-  /// cClassTrib (6 dígitos).
-  final String classificacao;
-  final double? vBC;
-  final double pIBSUF;
-  final double vIBSUF;
-  final double pIBSMun;
-  final double vIBSMun;
-
-  /// Se nulo, vIBSUF + vIBSMun.
-  final double? vIBS;
-  final double pCBS;
-  final double vCBS;
-
-  String xml() {
-    String t(String tag, String v) => '<$tag>${escaparXml(v)}</$tag>';
-    String v2(double v) => formatarDecimal(v, 2);
-    String p4(double v) => formatarDecimal(v, 4);
-    final b = StringBuffer('<IBSCBS>${t('CST', cst)}${t('cClassTrib', classificacao)}');
-    if (vBC != null) {
-      b
-        ..write('<gIBSCBS>${t('vBC', v2(vBC!))}')
-        ..write('<gIBSUF>${t('pIBSUF', p4(pIBSUF))}${t('vIBSUF', v2(vIBSUF))}</gIBSUF>')
-        ..write('<gIBSMun>${t('pIBSMun', p4(pIBSMun))}${t('vIBSMun', v2(vIBSMun))}</gIBSMun>')
-        ..write(t('vIBS', v2(vIBS ?? (vIBSUF + vIBSMun))))
-        ..write('<gCBS>${t('pCBS', p4(pCBS))}${t('vCBS', v2(vCBS))}</gCBS>')
-        ..write('</gIBSCBS>');
-    }
-    b.write('</IBSCBS>');
-    return b.toString();
-  }
-}
-
-/// Totais do IBS/CBS (grupo `IBSCBSTot`), informados pelo app.
-class IbsCbsTot {
-  const IbsCbsTot({
-    required this.vBCIBSCBS,
-    this.vIBSUF = 0,
-    this.vIBSMun = 0,
-    this.vIBS,
-    this.vCBS = 0,
-    this.vDifUF = 0,
-    this.vDevTribUF = 0,
-    this.vDifMun = 0,
-    this.vDevTribMun = 0,
-    this.vCredPresIBS = 0,
-    this.vCredPresCondSusIBS = 0,
-    this.vDifCBS = 0,
-    this.vDevTribCBS = 0,
-    this.vCredPresCBS = 0,
-    this.vCredPresCondSusCBS = 0,
-  });
-
-  final double vBCIBSCBS;
-  final double vIBSUF;
-  final double vIBSMun;
-  final double? vIBS;
-  final double vCBS;
-  final double vDifUF;
-  final double vDevTribUF;
-  final double vDifMun;
-  final double vDevTribMun;
-  final double vCredPresIBS;
-  final double vCredPresCondSusIBS;
-  final double vDifCBS;
-  final double vDevTribCBS;
-  final double vCredPresCBS;
-  final double vCredPresCondSusCBS;
-
-  String xml() {
-    String t(String tag, double v) => '<$tag>${formatarDecimal(v, 2)}</$tag>';
-    return '<IBSCBSTot>${t('vBCIBSCBS', vBCIBSCBS)}'
-        '<gIBS><gIBSUF>${t('vDif', vDifUF)}${t('vDevTrib', vDevTribUF)}${t('vIBSUF', vIBSUF)}</gIBSUF>'
-        '<gIBSMun>${t('vDif', vDifMun)}${t('vDevTrib', vDevTribMun)}${t('vIBSMun', vIBSMun)}</gIBSMun>'
-        '${t('vIBS', vIBS ?? (vIBSUF + vIBSMun))}${t('vCredPres', vCredPresIBS)}'
-        '${t('vCredPresCondSus', vCredPresCondSusIBS)}</gIBS>'
-        '<gCBS>${t('vDif', vDifCBS)}${t('vDevTrib', vDevTribCBS)}${t('vCBS', vCBS)}'
-        '${t('vCredPres', vCredPresCBS)}${t('vCredPresCondSus', vCredPresCondSusCBS)}</gCBS></IBSCBSTot>';
-  }
-}
-
 /// Grupo `imposto` do item, com todos os valores informados pelo app.
 ///
 /// Ordem do schema: vTotTrib, (ICMS, IPI, II) ou (IPI, ISSQN), PIS, PISST,
@@ -202,6 +104,7 @@ class ImpostoItem {
     this.cofins,
     this.cofinsSt,
     this.icmsUfDest,
+    this.impostoSeletivo,
     this.ibsCbs,
   });
 
@@ -218,7 +121,11 @@ class ImpostoItem {
   final CofinsGeral? cofins;
   final CofinsSt? cofinsSt;
   final IcmsUfDest? icmsUfDest;
-  final IbsCbs? ibsCbs;
+  /// Imposto Seletivo (grupo `IS`).
+  final IS? impostoSeletivo;
+
+  /// IBS/CBS (grupo `IBSCBS`, reforma tributária).
+  final IBSCBS? ibsCbs;
 
   String xml(int crt) {
     final b = StringBuffer('<imposto>');
@@ -236,7 +143,8 @@ class ImpostoItem {
     if (cofins != null) b.write(_xmlCofins(cofins!));
     if (cofinsSt != null) b.write(serializarGrupo('COFINSST', cofinsSt!.valores));
     if (icmsUfDest != null) b.write(serializarGrupo('ICMSUFDest', icmsUfDest!.valores));
-    if (ibsCbs != null) b.write(ibsCbs!.xml());
+    if (impostoSeletivo != null) b.write(serializarGrupoXml(impostoSeletivo!));
+    if (ibsCbs != null) b.write(serializarGrupoXml(ibsCbs!));
     b.write('</imposto>');
     return b.toString();
   }
@@ -244,12 +152,16 @@ class ImpostoItem {
 
 /// Totais da nota (grupo `total`), informados pelo app.
 class TotalNfe {
-  const TotalNfe({required this.icmsTot, this.issqnTot, this.retTrib, this.ibsCbsTot});
+  const TotalNfe({required this.icmsTot, this.issqnTot, this.retTrib, this.isTot, this.ibsCbsTot, this.vNFTot});
 
   final IcmsTot icmsTot;
   final IssqnTot? issqnTot;
   final RetTrib? retTrib;
-  final IbsCbsTot? ibsCbsTot;
+  final ISTot? isTot;
+  final IBSCBSTot? ibsCbsTot;
+
+  /// vNFTot: total da nota com IBS/CBS/IS (informado pelo app).
+  final double? vNFTot;
 
   /// Valor total da nota (vNF) informado.
   double get vNF => icmsTot.vNF ?? 0;
@@ -258,7 +170,9 @@ class TotalNfe {
     final b = StringBuffer('<total>${serializarGrupo('ICMSTot', icmsTot.valores)}');
     if (issqnTot != null) b.write(serializarGrupo('ISSQNtot', issqnTot!.valores));
     if (retTrib != null) b.write(serializarGrupo('retTrib', retTrib!.valores));
-    if (ibsCbsTot != null) b.write(ibsCbsTot!.xml());
+    if (isTot != null) b.write(serializarGrupoXml(isTot!));
+    if (ibsCbsTot != null) b.write(serializarGrupoXml(ibsCbsTot!));
+    if (vNFTot != null) b.write('<vNFTot>${formatarDecimal(vNFTot!, 2)}</vNFTot>');
     b.write('</total>');
     return b.toString();
   }

@@ -104,10 +104,11 @@ TotalNfe calcularTotais(List<ItemNfe> itens) {
     final ibs = imp.ibsCbs;
     if (ibs != null) {
       temIbsCbs = true;
-      ibsBase += ibs.vBC ?? 0;
-      ibsUf += ibs.vBC == null ? 0 : ibs.vIBSUF;
-      ibsMun += ibs.vBC == null ? 0 : ibs.vIBSMun;
-      cbs += ibs.vBC == null ? 0 : ibs.vCBS;
+      final g = ibs.gIBSCBS;
+      ibsBase += g?.vBC ?? 0;
+      ibsUf += g?.gIBSUF?.vIBSUF ?? 0;
+      ibsMun += g?.gIBSMun?.vIBSMun ?? 0;
+      cbs += g?.gCBS?.vCBS ?? 0;
     }
   }
   final r = arredondar;
@@ -136,8 +137,17 @@ TotalNfe calcularTotais(List<ItemNfe> itens) {
       vTotTrib: vTotTrib > 0 ? r(vTotTrib) : null,
     ),
     ibsCbsTot: temIbsCbs
-        ? IbsCbsTot(
-            vBCIBSCBS: r(ibsBase), vIBSUF: r(ibsUf), vIBSMun: r(ibsMun), vIBS: r(ibsUf + ibsMun), vCBS: r(cbs))
+        ? IBSCBSTot(
+            vBCIBSCBS: r(ibsBase),
+            gIBS: GIBSTotal(
+              gIBSUF: GIBSUFTotal(vDif: 0, vDevTrib: 0, vIBSUF: r(ibsUf)),
+              gIBSMun: GIBSMunTotal(vDif: 0, vDevTrib: 0, vIBSMun: r(ibsMun)),
+              vIBS: r(ibsUf + ibsMun),
+              vCredPres: 0,
+              vCredPresCondSus: 0,
+            ),
+            gCBS: GCBSTotal(vDif: 0, vDevTrib: 0, vCBS: r(cbs), vCredPres: 0, vCredPresCondSus: 0),
+          )
         : null,
   );
 }

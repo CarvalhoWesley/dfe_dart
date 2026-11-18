@@ -7,7 +7,18 @@ Object _exemplo(CampoGrupo c) => switch (c.tipo) {
       TipoCampo.dec => 1.5,
       TipoCampo.int => 2,
       TipoCampo.str => 'X',
+      TipoCampo.grp => _GrupoExemplo(c.classe!),
     };
+
+/// Subgrupo preenchido só com os campos obrigatórios.
+class _GrupoExemplo implements GrupoXml {
+  _GrupoExemplo(this.grupo);
+  @override
+  final String grupo;
+  @override
+  Map<String, Object?> get valores =>
+      {for (final c in especificacaoGrupos[grupo]!) if (!c.opcional) c.nome: _exemplo(c)};
+}
 
 List<String> _filhos(String xml) =>
     XmlDocument.parse(xml).rootElement.childElements.map((e) => e.name.local).toList();
@@ -18,7 +29,7 @@ void main() {
       for (final MapEntry(key: grupo, value: campos) in especificacaoGrupos.entries) {
         final valores = {for (final c in campos) c.nome: _exemplo(c)};
         final xml = serializarGrupo(grupo, valores);
-        expect(_filhos(xml), campos.map((c) => c.nome).toList(), reason: grupo);
+        expect(_filhos(xml), campos.where((c) => !c.atributo).map((c) => c.nome).toList(), reason: grupo);
       }
     });
 
@@ -26,7 +37,7 @@ void main() {
       for (final MapEntry(key: grupo, value: campos) in especificacaoGrupos.entries) {
         final obrigatorios = campos.where((c) => !c.opcional).toList();
         final valores = {for (final c in obrigatorios) c.nome: _exemplo(c)};
-        expect(_filhos(serializarGrupo(grupo, valores)), obrigatorios.map((c) => c.nome).toList(),
+        expect(_filhos(serializarGrupo(grupo, valores)), obrigatorios.where((c) => !c.atributo).map((c) => c.nome).toList(),
             reason: grupo);
         if (obrigatorios.isNotEmpty) {
           final faltando = Map.of(valores)..remove(obrigatorios.first.nome);
@@ -132,7 +143,7 @@ void main() {
         cofins: const CofinsGeral(cst: '07'),
         icmsUfDest: const IcmsUfDest(
             vBCUFDest: 1, pICMSUFDest: 1, pICMSInter: 1, pICMSInterPart: 1, vICMSUFDest: 1, vICMSUFRemet: 1),
-        ibsCbs: const IbsCbs(cst: '410', classificacao: '410001'),
+        ibsCbs: const IBSCBS(cst: '410', cClassTrib: '410001'),
       ).xml(1);
       expect(_filhos(comIcms), ['vTotTrib', 'ICMS', 'PIS', 'PISST', 'COFINS', 'ICMSUFDest', 'IBSCBS']);
 
