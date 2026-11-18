@@ -195,12 +195,21 @@ class ResponsavelTecnico {
     required this.contato,
     required this.email,
     required this.fone,
+    this.idCsrt,
+    this.csrt,
   });
 
   final String cnpj;
   final String contato;
   final String email;
   final String fone;
+
+  /// Identificador do CSRT (idCSRT), fornecido pela SEFAZ.
+  final int? idCsrt;
+
+  /// CSRT (código de segurança). Com [idCsrt], a montagem inclui o `hashCSRT`
+  /// calculado sobre a chave de acesso.
+  final String? csrt;
 }
 
 class DadosNfe {

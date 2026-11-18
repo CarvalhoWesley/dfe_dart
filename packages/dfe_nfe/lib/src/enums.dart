@@ -16,18 +16,37 @@ enum ModeloDocumento {
   final int codigo;
 }
 
-/// Forma de emissão (tpEmis).
+/// Forma de emissão (tpEmis) — mesmos valores do `TipoEmissao` do Zeus.
 enum TipoEmissao {
   normal(1),
+
+  /// Contingência FS-IA (formulário de segurança — impressor autônomo).
+  fsIa(2),
+
+  /// Contingência SCAN (descontinuada; mantida por paridade).
+  scan(3),
+
+  /// Contingência EPEC (evento prévio de emissão em contingência).
+  epec(4),
+
+  /// Contingência FS-DA (formulário de segurança para DANFE).
+  fsDa(5),
+
   /// Contingência SVC-AN (NF-e).
   svcAn(6),
+
   /// Contingência SVC-RS (NF-e).
   svcRs(7),
+
   /// Contingência offline da NFC-e.
   offlineNfce(9);
 
   const TipoEmissao(this.codigo);
   final int codigo;
+
+  /// Usa os servidores de contingência (SVC); as demais formas usam os
+  /// servidores normais da UF (a nota é transmitida depois).
+  bool get usaSvc => this == svcAn || this == svcRs;
 
   bool get contingencia => this != normal;
 

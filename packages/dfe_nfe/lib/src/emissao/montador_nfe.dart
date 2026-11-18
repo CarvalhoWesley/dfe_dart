@@ -3,6 +3,7 @@ import 'dart:math';
 import '../enums.dart';
 import '../status/cons_stat_serv.dart' show nsNfe;
 import '../util/chave_acesso.dart';
+import '../util/csrt.dart';
 import '../util/formatacao.dart';
 import 'dados_nfe.dart';
 
@@ -172,8 +173,13 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
       ..write(_t('CNPJ', rt.cnpj))
       ..write(_t('xContato', rt.contato))
       ..write(_t('email', rt.email))
-      ..write(_t('fone', rt.fone))
-      ..write('</infRespTec>');
+      ..write(_t('fone', rt.fone));
+    if (rt.idCsrt != null && rt.csrt != null) {
+      x
+        ..write(_t('idCSRT', rt.idCsrt!.toString().padLeft(2, '0')))
+        ..write(_t('hashCSRT', hashCsrt(rt.csrt!, chave.valor)));
+    }
+    x.write('</infRespTec>');
   }
 
   x.write('</infNFe></NFe>');

@@ -320,7 +320,7 @@ class ServicosNfe {
   String _url(ServicoNfe servico, String chave) {
     final tp = TipoEmissao.daChave(chave);
     return Enderecador.url(servico, config.uf, config.modelo, config.ambiente,
-        tipoEmissao: tp == TipoEmissao.svcAn || tp == TipoEmissao.svcRs ? tp : TipoEmissao.normal);
+        tipoEmissao: tp.usaSvc ? tp : TipoEmissao.normal);
   }
 
   Future<String> _enviar(ServicoNfe servico, String url, String xml) => _soap.enviar(

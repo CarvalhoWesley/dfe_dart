@@ -31,7 +31,8 @@ class Enderecador {
   static TipoEmissao contingenciaSvc(Uf uf) =>
       _svcRsUfs.contains(uf) ? TipoEmissao.svcRs : TipoEmissao.svcAn;
 
-  /// URL do [servico]. A NFC-e em contingência offline usa as URLs normais.
+  /// URL do [servico]. Só SVC-AN/SVC-RS usam outros servidores; as demais
+  /// formas de contingência (offline, EPEC, FS-IA, FS-DA) usam as URLs normais.
   static String url(
     ServicoNfe servico,
     Uf uf,
@@ -39,7 +40,7 @@ class Enderecador {
     Ambiente ambiente, {
     TipoEmissao tipoEmissao = TipoEmissao.normal,
   }) {
-    final tp = tipoEmissao == TipoEmissao.offlineNfce ? TipoEmissao.normal : tipoEmissao;
+    final tp = tipoEmissao.usaSvc ? tipoEmissao : TipoEmissao.normal;
     final r = tabelaUrlsServicos['${uf.sigla}|${modelo.name}|${ambiente.name}|${tp.name}|${servico.name}'];
     if (r == null) {
       throw UnsupportedError('Sem URL de ${servico.name} para ${uf.sigla}/${modelo.name}/'
