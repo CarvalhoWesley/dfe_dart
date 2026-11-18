@@ -50,7 +50,8 @@ dfe_dart/
 ### Fase 2 — NFC-e ✅ (SP)
 - Autorização síncrona, consulta, cancelamento, contingência offline (tpEmis 9) com reenvio, QR Code v2/v3.
 - Inutilização implementada; **SEFAZ-SP retorna 998 (serviço desativado)** — botões removidos do app.
-- Pendente: tabela completa de URLs por UF (hoje SP, UFs SVRS, SVC-AN/RS; QR Code só SP) e validação em uma 2ª UF.
+- Tabela completa de URLs (27 UFs, NF-e/NFC-e, produção/homologação, SVC-AN/RS, QR Code v2/v3 e consulta) gerada do Zeus por `tools/exportar_urls`.
+- Pendente: validação em uma 2ª UF.
 
 ### Fase 3 — NF-e ✅ parcial
 - Feito: autorização síncrona/assíncrona (recibo), contingência SVC-AN/SVC-RS, consulta, cancelamento.
@@ -85,5 +86,5 @@ CT-e, MDF-e, A3, validação completa por XSD, Flutter Web.
 |---|---|
 | C14N divergente → rejeição 297 | Golden byte a byte contra o .NET |
 | Renegociação TLS em outras plataformas | Transporte nativo por plataforma; validar em cada uma |
-| Diferenças de URL/versão por UF | Portar a tabela completa do Zeus |
+| Diferenças de URL/versão por UF | Tabela gerada do Zeus; regenerar com `tools/exportar_urls` quando o Zeus atualizar |
 | Regras de validação por UF (rejeições) | Testar em homologação por UF atendida |

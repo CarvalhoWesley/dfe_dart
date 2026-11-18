@@ -5,6 +5,7 @@ import 'package:dfe_core/dfe_core.dart';
 import 'package:pointycastle/export.dart';
 import 'package:xml/xml.dart';
 
+import '../enderecos_tabela.g.dart';
 import '../enums.dart';
 import '../util/formatacao.dart';
 
@@ -17,22 +18,20 @@ enum VersaoQrCode {
   v3,
 }
 
-/// URLs de consulta da NFC-e por UF (porte parcial de `ExtinfNFeSupl.cs`).
+/// URLs do QR Code e da consulta pública da NFC-e por UF (tabela gerada do
+/// `ExtinfNFeSupl.cs` do Zeus por `tools/exportar_urls`).
 class UrlsNfce {
   const UrlsNfce(this.qrCode, this.consulta);
   final String qrCode;
   final String consulta;
 
-  static const _tabela = <Uf, Map<Ambiente, UrlsNfce>>{
-    Uf.sp: {
-      Ambiente.homologacao: UrlsNfce('https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode',
-          'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta'),
-      Ambiente.producao: UrlsNfce(
-          'https://www.nfce.fazenda.sp.gov.br/qrcode', 'https://www.nfce.fazenda.sp.gov.br/consulta'),
-    },
-  };
-
-  static UrlsNfce? obter(Uf uf, Ambiente ambiente) => _tabela[uf]?[ambiente];
+  static UrlsNfce? obter(Uf uf, Ambiente ambiente, [VersaoQrCode versao = VersaoQrCode.v3]) {
+    final base = '${uf.sigla}|${ambiente.name}|${versao.name}';
+    final qr = tabelaUrlsNfce['$base|qrCode'];
+    final consulta = tabelaUrlsNfce['$base|consulta'];
+    if (qr == null || consulta == null) return null;
+    return UrlsNfce(qr, consulta);
+  }
 }
 
 /// Dados do `<NFe>` necessários ao QR Code, lidos do XML assinado.

@@ -51,7 +51,7 @@ class EmissorNfe {
     String? qr;
     if (dados.modelo == ModeloDocumento.nfce) {
       final uf = dados.emitente.endereco.uf;
-      final urls = UrlsNfce.obter(uf, dados.ambiente);
+      final urls = UrlsNfce.obter(uf, dados.ambiente, nfce.versaoQrCode);
       final urlQr = nfce.urlQrCode ?? urls?.qrCode;
       final urlConsulta = nfce.urlConsulta ?? urls?.consulta;
       if (urlQr == null || urlConsulta == null) {

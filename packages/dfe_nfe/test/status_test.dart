@@ -35,7 +35,54 @@ void main() {
         contains('nfce.svrs.rs.gov.br'));
     expect(Enderecador.urlStatus(Uf.sp, ModeloDocumento.nfe, Ambiente.homologacao),
         'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx');
-    expect(() => Enderecador.urlStatus(Uf.ce, ModeloDocumento.nfe, Ambiente.producao),
+    expect(Enderecador.urlStatus(Uf.ce, ModeloDocumento.nfe, Ambiente.producao), startsWith('https://'));
+    // Ambiente Nacional não autoriza NF-e: combinação inexistente na tabela.
+    expect(() => Enderecador.url(ServicoNfe.autorizacao, Uf.an, ModeloDocumento.nfce, Ambiente.producao),
         throwsUnsupportedError);
+  });
+
+  group('tabela completa (gerada do Zeus)', () {
+    final ufs = Uf.values.where((u) => u != Uf.an);
+    const servicos = [
+      ServicoNfe.statusServico,
+      ServicoNfe.autorizacao,
+      ServicoNfe.retAutorizacao,
+      ServicoNfe.consultaProtocolo,
+      ServicoNfe.recepcaoEvento,
+    ];
+
+    test('todas as 27 UFs têm os serviços de NF-e e NFC-e nos dois ambientes', () {
+      final faltando = <String>[];
+      for (final uf in ufs) {
+        for (final m in ModeloDocumento.values) {
+          for (final a in Ambiente.values) {
+            for (final s in servicos) {
+              try {
+                Enderecador.url(s, uf, m, a);
+              } on UnsupportedError {
+                faltando.add('${uf.sigla}/${m.name}/${a.name}/${s.name}');
+              }
+            }
+          }
+        }
+      }
+      expect(faltando, isEmpty);
+    });
+
+    test('contingência SVC da NF-e disponível para todas as UFs', () {
+      for (final uf in ufs) {
+        final svc = Enderecador.contingenciaSvc(uf);
+        expect(Enderecador.url(ServicoNfe.autorizacao, uf, ModeloDocumento.nfe, Ambiente.homologacao,
+            tipoEmissao: svc), startsWith('https://'), reason: uf.sigla);
+      }
+    });
+
+    test('QR Code v3 e consulta para todas as UFs', () {
+      for (final uf in ufs) {
+        for (final a in Ambiente.values) {
+          expect(UrlsNfce.obter(uf, a, VersaoQrCode.v3), isNotNull, reason: '${uf.sigla}/${a.name}');
+        }
+      }
+    });
   });
 }
