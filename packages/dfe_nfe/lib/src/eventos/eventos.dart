@@ -146,16 +146,252 @@ EventoNfe _montarEvento({
   required CertificadoDigital certificado,
   required int sequencia,
   DateTime? dataEvento,
+  String? cOrgao,
+  String? cpf,
 }) {
   final id = 'ID$tipo$chave${sequencia.toString().padLeft(2, '0')}';
-  final cOrgao = chave.substring(0, 2);
+  final autor = cpf != null ? _t('CPF', cpf) : _t('CNPJ', cnpj);
   final xml = '<evento xmlns="$nsNfe" versao="1.00"><infEvento Id="$id">'
-      '${_t('cOrgao', cOrgao)}${_t('tpAmb', '${ambiente.codigo}')}${_t('CNPJ', cnpj)}'
+      '${_t('cOrgao', cOrgao ?? chave.substring(0, 2))}${_t('tpAmb', '${ambiente.codigo}')}$autor'
       '${_t('chNFe', chave)}${_t('dhEvento', formatarDataHora(dataEvento ?? DateTime.now()))}'
       '${_t('tpEvento', tipo)}${_t('nSeqEvento', '$sequencia')}${_t('verEvento', '1.00')}'
       '<detEvento versao="1.00">$detalhe</detEvento>'
       '</infEvento></evento>';
   return EventoNfe._(assinarXml(xml, id, certificado), id, chave, tipo, sequencia);
+}
+
+/// Destinatário do EPEC (grupo `dest` do detEvento) — `dest.cs` do Zeus.
+class DestinatarioEpec {
+  const DestinatarioEpec({
+    required this.uf,
+    this.cnpj,
+    this.cpf,
+    this.idEstrangeiro,
+    this.ie,
+    required this.vNF,
+    required this.vICMS,
+    required this.vST,
+  });
+
+  final String uf;
+  final String? cnpj;
+  final String? cpf;
+  final String? idEstrangeiro;
+  final String? ie;
+  final double vNF;
+  final double vICMS;
+  final double vST;
+
+  String xml() => '<dest>${_t('UF', uf)}'
+      '${cnpj != null ? _t('CNPJ', cnpj!) : cpf != null ? _t('CPF', cpf!) : _t('idEstrangeiro', idEstrangeiro ?? '')}'
+      '${ie == null ? '' : _t('IE', ie!)}'
+      '${_t('vNF', formatarDecimal(vNF))}${_t('vICMS', formatarDecimal(vICMS))}${_t('vST', formatarDecimal(vST))}'
+      '</dest>';
+}
+
+/// Detalhe do evento (`detEvento`) com os valores informados pelo app.
+///
+/// Classe plana como o `detEvento` do Zeus: os campos preenchidos são emitidos
+/// na ordem de declaração do Zeus. Use com [montarEvento] para eventos que não
+/// têm montador próprio.
+class DetalheEvento {
+  const DetalheEvento({
+    required this.descEvento,
+    this.xCorrecao,
+    this.xCondUso,
+    this.cOrgaoAutor,
+    this.tpAutor,
+    this.verAplic,
+    this.dhEmi,
+    this.tpNF,
+    this.ie,
+    this.dest,
+    this.nProt,
+    this.xJust,
+    this.chNFeRef,
+    this.tpEventoAut,
+    this.nProtEvento,
+  });
+
+  final String descEvento;
+  final String? xCorrecao;
+  final String? xCondUso;
+  final int? cOrgaoAutor;
+
+  /// 1 empresa emitente, 2 destinatário, 3 empresa, 5 fisco, 6 RFB, 9 outros.
+  final int? tpAutor;
+  final String? verAplic;
+  final DateTime? dhEmi;
+  final int? tpNF;
+  final String? ie;
+  final DestinatarioEpec? dest;
+  final String? nProt;
+  final String? xJust;
+  final String? chNFeRef;
+  final String? tpEventoAut;
+  final String? nProtEvento;
+
+  String xml() {
+    final b = StringBuffer(_t('descEvento', descEvento));
+    void opc(String tag, Object? v) {
+      if (v != null) b.write(_t(tag, '$v'));
+    }
+
+    opc('xCorrecao', xCorrecao);
+    opc('xCondUso', xCondUso);
+    opc('cOrgaoAutor', cOrgaoAutor);
+    opc('tpAutor', tpAutor);
+    opc('verAplic', verAplic);
+    opc('dhEmi', dhEmi == null ? null : formatarDataHora(dhEmi!));
+    opc('tpNF', tpNF);
+    opc('IE', ie);
+    if (dest != null) b.write(dest!.xml());
+    opc('nProt', nProt);
+    opc('xJust', xJust);
+    opc('chNFeRef', chNFeRef);
+    opc('tpEventoAut', tpEventoAut);
+    opc('nProtEvento', nProtEvento);
+    return b.toString();
+  }
+}
+
+/// Monta e assina um evento genérico com o [detalhe] informado pelo app.
+///
+/// [cOrgao] padrão = UF da chave; use `91` para eventos do Ambiente Nacional.
+/// Informe [cpf] no lugar de [cnpj] quando o autor for pessoa física.
+EventoNfe montarEvento({
+  required String tipo,
+  required DetalheEvento detalhe,
+  required String chave,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  String cnpj = '',
+  String? cpf,
+  String? cOrgao,
+  int sequencia = 1,
+  DateTime? dataEvento,
+}) =>
+    _montarEvento(
+      tipo: tipo,
+      detalhe: detalhe.xml(),
+      chave: chave,
+      cnpj: cnpj,
+      cpf: cpf,
+      cOrgao: cOrgao,
+      ambiente: ambiente,
+      certificado: certificado,
+      sequencia: sequencia,
+      dataEvento: dataEvento,
+    );
+
+/// Cancelamento por substituição da NFC-e (110112): cancela [chave]
+/// informando a NFC-e substituta [chaveSubstituta].
+EventoNfe montarEventoCancelamentoSubstituicao({
+  required String chave,
+  required String protocolo,
+  required String justificativa,
+  required String chaveSubstituta,
+  required String cnpj,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  String versaoAplicativo = 'dfe_dart 0.1',
+  int sequencia = 1,
+  DateTime? dataEvento,
+}) =>
+    montarEvento(
+      tipo: '110112',
+      detalhe: DetalheEvento(
+        descEvento: 'Cancelamento por substituicao',
+        cOrgaoAutor: int.parse(chave.substring(0, 2)),
+        tpAutor: 1,
+        verAplic: versaoAplicativo,
+        nProt: protocolo,
+        xJust: justificativa,
+        chNFeRef: chaveSubstituta,
+      ),
+      chave: chave,
+      cnpj: cnpj,
+      ambiente: ambiente,
+      certificado: certificado,
+      sequencia: sequencia,
+      dataEvento: dataEvento,
+    );
+
+/// EPEC (110140) — evento prévio da NF-e emitida em contingência EPEC
+/// (tpEmis 4). Enviado ao Ambiente Nacional (cOrgao 91).
+EventoNfe montarEventoEpec({
+  required String chave,
+  required String cnpj,
+  required String inscricaoEstadual,
+  required DateTime dataEmissao,
+  required DestinatarioEpec destinatario,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  int tipoOperacao = 1,
+  String versaoAplicativo = 'dfe_dart 0.1',
+  DateTime? dataEvento,
+}) =>
+    montarEvento(
+      tipo: '110140',
+      detalhe: DetalheEvento(
+        descEvento: 'EPEC',
+        cOrgaoAutor: int.parse(chave.substring(0, 2)),
+        tpAutor: 1,
+        verAplic: versaoAplicativo,
+        dhEmi: dataEmissao,
+        tpNF: tipoOperacao,
+        ie: inscricaoEstadual,
+        dest: destinatario,
+      ),
+      chave: chave,
+      cnpj: cnpj,
+      cOrgao: '91',
+      ambiente: ambiente,
+      certificado: certificado,
+      dataEvento: dataEvento,
+    );
+
+/// Tipos da manifestação do destinatário.
+enum Manifestacao {
+  confirmacao('210200', 'Confirmacao da Operacao'),
+  ciencia('210210', 'Ciencia da Operacao'),
+  desconhecimento('210220', 'Desconhecimento da Operacao'),
+
+  /// Exige justificativa.
+  naoRealizada('210240', 'Operacao nao Realizada');
+
+  const Manifestacao(this.tipo, this.descricao);
+  final String tipo;
+  final String descricao;
+}
+
+/// Manifestação do destinatário (210200/210210/210220/210240), enviada ao
+/// Ambiente Nacional (cOrgao 91) pelo destinatário da NF-e.
+EventoNfe montarEventoManifestacao({
+  required String chave,
+  required Manifestacao manifestacao,
+  required Ambiente ambiente,
+  required CertificadoDigital certificado,
+  String cnpj = '',
+  String? cpf,
+  String? justificativa,
+  DateTime? dataEvento,
+}) {
+  if (manifestacao == Manifestacao.naoRealizada) _validarJustificativa(justificativa ?? '');
+  return montarEvento(
+    tipo: manifestacao.tipo,
+    detalhe: DetalheEvento(
+      descEvento: manifestacao.descricao,
+      xJust: manifestacao == Manifestacao.naoRealizada ? justificativa : null,
+    ),
+    chave: chave,
+    cnpj: cnpj,
+    cpf: cpf,
+    cOrgao: '91',
+    ambiente: ambiente,
+    certificado: certificado,
+    dataEvento: dataEvento,
+  );
 }
 
 /// `envEvento` 1.00 com um ou mais eventos assinados.

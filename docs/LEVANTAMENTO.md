@@ -145,9 +145,9 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 | B2 | ✅ **(2026-11-18)** **Seleção do grupo pelo CRT + CST/CSOSN** a partir de um objeto plano (equivalente ao `ICMSGeral`, `PISGeral`, `COFINSGeral`, `IPIGeral`) | ✅ |
 | B3 | ✅ **(2026-11-18)** PIS/COFINS por quantidade e ST; IPI por unidade; II; ISSQN | ✅ |
 | B4 | IBS/CBS completo (gRed, gDif, gDevTrib, crédito presumido, monofásico, tributação regular, compra governamental), IS, `vNFTot` | ✅ |
-| B5 | Tipos de emissão completos (`tpEmis` 2 FS, 3 SCAN, 4 EPEC, 5 FS-DA) | ✅ |
-| B6 | Eventos: **cancelamento por substituição (110112)**, **EPEC (110140)**, ator interessado, comprovante/insucesso de entrega, conciliação financeira, manifestação do destinatário, eventos da reforma | ✅ |
-| B7 | **Hash CSRT** (`infRespTec`) | ✅ |
+| B5 | ✅ **(2026-11-18)** Tipos de emissão completos (`tpEmis` 2 FS, 3 SCAN, 4 EPEC, 5 FS-DA) | ✅ |
+| B6 | ⚠️ **Parcial (2026-11-18):** feitos cancelamento por substituição (110112), EPEC (110140, Ambiente Nacional), manifestação do destinatário (210200/210210/210220/210240) e evento genérico (`montarEvento` + `DetalheEvento`). **Pendentes:** ator interessado, comprovante/insucesso de entrega (o Zeus emite `latGPS`/`longGPS` antes de `dhEntrega` — conferir com o schema), conciliação financeira, eventos da reforma | ✅ |
+| B7 | ✅ **(2026-11-18)** **Hash CSRT** (`infRespTec`) — validado com o exemplo da NT; a sobrecarga do Zeus que recebe a NF-e usa "NFe" no lugar da chave (erro do Zeus) | ✅ |
 | B8 | NF-e: `finNFe` 2/3/4 com `NFref`, entrega/retirada, autXML, intermediador, exportação, compra, cana | ✅ |
 | B9 | Distribuição DF-e, consulta de cadastro, download | ✅ |
 | B10 | **Feito (2026-11-18):** emissão anêmica no `dfe_nfe` e cálculos no `dfe_calculos`; regressão com XML idêntico ao anterior | — |

@@ -10,7 +10,13 @@ enum ServicoNfe {
   retAutorizacao('$_wsdl/NFeRetAutorizacao4', '$_wsdl/NFeRetAutorizacao4/nfeRetAutorizacaoLote'),
   consultaProtocolo('$_wsdl/NFeConsultaProtocolo4', '$_wsdl/NFeConsultaProtocolo4/nfeConsultaNF'),
   inutilizacao('$_wsdl/NFeInutilizacao4', '$_wsdl/NFeInutilizacao4/nfeInutilizacaoNF'),
-  recepcaoEvento('$_wsdl/NFeRecepcaoEvento4', '$_wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento');
+  recepcaoEvento('$_wsdl/NFeRecepcaoEvento4', '$_wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento'),
+
+  /// EPEC (Ambiente Nacional).
+  recepcaoEventoEpec('$_wsdl/NFeRecepcaoEvento4', '$_wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento'),
+
+  /// Manifestação do destinatário (Ambiente Nacional).
+  manifestacaoDestinatario('$_wsdl/NFeRecepcaoEvento4', '$_wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento');
 
   const ServicoNfe(this.namespaceWsdl, this.action);
   final String namespaceWsdl;
@@ -40,7 +46,11 @@ class Enderecador {
     Ambiente ambiente, {
     TipoEmissao tipoEmissao = TipoEmissao.normal,
   }) {
-    final tp = tipoEmissao.usaSvc ? tipoEmissao : TipoEmissao.normal;
+    // O EPEC é registrado no Zeus com tpEmis = EPEC; os demais serviços só
+    // mudam de servidor em SVC.
+    final tp = servico == ServicoNfe.recepcaoEventoEpec
+        ? TipoEmissao.epec
+        : (servico != ServicoNfe.manifestacaoDestinatario && tipoEmissao.usaSvc ? tipoEmissao : TipoEmissao.normal);
     final r = tabelaUrlsServicos['${uf.sigla}|${modelo.name}|${ambiente.name}|${tp.name}|${servico.name}'];
     if (r == null) {
       throw UnsupportedError('Sem URL de ${servico.name} para ${uf.sigla}/${modelo.name}/'

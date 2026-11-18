@@ -240,16 +240,106 @@ class ServicosNfe {
     );
   }
 
+  /// Cancelamento por substituição da NFC-e (110112).
+  Future<ResultadoEvento> cancelarPorSubstituicao({
+    required String chave,
+    required String protocolo,
+    required String justificativa,
+    required String chaveSubstituta,
+    required int idLote,
+    String? cnpj,
+    int sequencia = 1,
+  }) =>
+      _enviarEvento(
+        (data) => montarEventoCancelamentoSubstituicao(
+          chave: chave,
+          protocolo: protocolo,
+          justificativa: justificativa,
+          chaveSubstituta: chaveSubstituta,
+          cnpj: cnpj ?? chave.substring(6, 20),
+          ambiente: config.ambiente,
+          certificado: config.certificado,
+          sequencia: sequencia,
+          dataEvento: data,
+        ),
+        chave,
+        idLote,
+      );
+
+  /// EPEC (110140) da NF-e emitida em contingência EPEC — Ambiente Nacional.
+  Future<ResultadoEvento> enviarEpec({
+    required String chave,
+    required String inscricaoEstadual,
+    required DateTime dataEmissao,
+    required DestinatarioEpec destinatario,
+    required int idLote,
+    String? cnpj,
+    int tipoOperacao = 1,
+  }) =>
+      _enviarEvento(
+        (data) => montarEventoEpec(
+          chave: chave,
+          cnpj: cnpj ?? chave.substring(6, 20),
+          inscricaoEstadual: inscricaoEstadual,
+          dataEmissao: dataEmissao,
+          destinatario: destinatario,
+          ambiente: config.ambiente,
+          certificado: config.certificado,
+          tipoOperacao: tipoOperacao,
+          dataEvento: data,
+        ),
+        chave,
+        idLote,
+        servico: ServicoNfe.recepcaoEventoEpec,
+      );
+
+  /// Manifestação do destinatário — Ambiente Nacional. O certificado é o do
+  /// destinatário ([cnpj] ou [cpf]).
+  Future<ResultadoEvento> manifestar({
+    required String chave,
+    required Manifestacao manifestacao,
+    required int idLote,
+    String cnpj = '',
+    String? cpf,
+    String? justificativa,
+  }) =>
+      _enviarEvento(
+        (data) => montarEventoManifestacao(
+          chave: chave,
+          manifestacao: manifestacao,
+          ambiente: config.ambiente,
+          certificado: config.certificado,
+          cnpj: cnpj,
+          cpf: cpf,
+          justificativa: justificativa,
+          dataEvento: data,
+        ),
+        chave,
+        idLote,
+        servico: ServicoNfe.manifestacaoDestinatario,
+      );
+
+  /// Envia um evento genérico montado pelo app ([montarEvento]) no [servico]
+  /// indicado (padrão: recepção de eventos da UF).
+  Future<ResultadoEvento> enviarEvento(
+    EventoNfe Function(DateTime? dataEvento) montar, {
+    required String chave,
+    required int idLote,
+    ServicoNfe servico = ServicoNfe.recepcaoEvento,
+  }) =>
+      _enviarEvento(montar, chave, idLote, servico: servico);
+
   /// Envia o evento. Se for rejeitado e o `dhEvento` enviado estiver à frente
   /// do `dhRegEvento` da SEFAZ (relógio do servidor de eventos atrasado — visto
   /// na SEFAZ-SP como cStat 999), reassina com o horário da SEFAZ e reenvia uma
   /// vez. A rejeição não consome a sequência do evento.
   Future<ResultadoEvento> _enviarEvento(
-      EventoNfe Function(DateTime? dataEvento) montar, String chave, int idLote) async {
+      EventoNfe Function(DateTime? dataEvento) montar, String chave, int idLote,
+      {ServicoNfe servico = ServicoNfe.recepcaoEvento}) async {
     var evento = montar(null);
     var envio = montarEnvEvento([evento], idLote: idLote);
-    final url = _url(ServicoNfe.recepcaoEvento, chave);
-    var ret = await _enviar(ServicoNfe.recepcaoEvento, url, envio);
+    final url = _url(servico, chave);
+    var ret = await _enviar(servico, url, envio);
     var lote = RetEnvEvento.fromXml(ret);
     var retEvento = lote.eventos.firstOrNull;
 
@@ -262,7 +352,7 @@ class ServicosNfe {
         enviado.isAfter(registro)) {
       evento = montar(registro.subtract(const Duration(seconds: 2)));
       envio = montarEnvEvento([evento], idLote: idLote);
-      ret = await _enviar(ServicoNfe.recepcaoEvento, url, envio);
+      ret = await _enviar(servico, url, envio);
       lote = RetEnvEvento.fromXml(ret);
       retEvento = lote.eventos.firstOrNull;
     }

@@ -21,12 +21,15 @@ var servicos = new Dictionary<ServicoNFe, string>
     [ServicoNFe.NfeConsultaProtocolo] = "consultaProtocolo",
     [ServicoNFe.NfeInutilizacao] = "inutilizacao",
     [ServicoNFe.RecepcaoEventoCancelmento] = "recepcaoEvento",
+    [ServicoNFe.RecepcaoEventoEpec] = "recepcaoEventoEpec",
+    [ServicoNFe.RecepcaoEventoManifestacaoDestinatario] = "manifestacaoDestinatario",
 };
 var emissoes = new Dictionary<TipoEmissao, string>
 {
     [TipoEmissao.teNormal] = "normal",
     [TipoEmissao.teSVCAN] = "svcAn",
     [TipoEmissao.teSVCRS] = "svcRs",
+    [TipoEmissao.teEPEC] = "epec",
 };
 var modelos = new Dictionary<ModeloDocumento, string> { [ModeloDocumento.NFe] = "nfe", [ModeloDocumento.NFCe] = "nfce" };
 var ambientes = new Dictionary<TipoAmbiente, string> { [TipoAmbiente.Producao] = "producao", [TipoAmbiente.Homologacao] = "homologacao" };
@@ -42,7 +45,7 @@ foreach (var (tp, nomeTp) in emissoes)
     foreach (var e in Enderecador.ObterEnderecoServicosMaisRecentes(VersaoServico.Versao400, uf, amb, mod, tp))
     {
         if (!servicos.TryGetValue(e.ServicoNFe, out var nomeServ)) continue;
-        if (e.VersaoServico != VersaoServico.Versao400 && nomeServ != "recepcaoEvento") continue;
+        if (e.VersaoServico != VersaoServico.Versao400) continue;
         linhas[$"{uf}|{nomeMod}|{nomeAmb}|{nomeTp}|{nomeServ}"] = e.Url;
     }
 }
