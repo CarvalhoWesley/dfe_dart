@@ -36,6 +36,17 @@ class ConfigApp {
   String corte = 'parcial'; // total | parcial | nenhum
   bool abrirGaveta = false;
 
+  // Cenário de teste da venda
+  String tributacao = 'sn102'; // sn102 | sn101 | normal00 | normal40
+  String pagamento = 'dinheiro'; // dinheiro | credito | debito | pix | misto
+  double desconto = 0;
+
+  // Responsável técnico (infRespTec) — vazio = não envia
+  String respTecCnpj = '';
+  String respTecContato = '';
+  String respTecEmail = '';
+  String respTecFone = '';
+
   static Directory get pastaApp {
     final base = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '.';
     return Directory('$base${Platform.pathSeparator}Documents${Platform.pathSeparator}dfe_dart');
@@ -66,6 +77,9 @@ class ConfigApp {
         'idCsc': idCsc, 'csc': csc, 'pastaXml': pastaXml, 'idLote': idLote,
         'impressora': impressora, 'colunas': colunas, 'itemDuasLinhas': itemDuasLinhas,
         'modoQr': modoQr, 'paginaCodigo': paginaCodigo, 'corte': corte, 'abrirGaveta': abrirGaveta,
+        'tributacao': tributacao, 'pagamento': pagamento, 'desconto': desconto,
+        'respTecCnpj': respTecCnpj, 'respTecContato': respTecContato,
+        'respTecEmail': respTecEmail, 'respTecFone': respTecFone,
       };
 
   void _deJson(Map j) {
@@ -99,5 +113,12 @@ class ConfigApp {
     paginaCodigo = v('paginaCodigo', paginaCodigo);
     corte = v('corte', corte);
     abrirGaveta = v('abrirGaveta', abrirGaveta);
+    tributacao = v('tributacao', tributacao);
+    pagamento = v('pagamento', pagamento);
+    desconto = (j['desconto'] as num?)?.toDouble() ?? desconto;
+    respTecCnpj = v('respTecCnpj', respTecCnpj);
+    respTecContato = v('respTecContato', respTecContato);
+    respTecEmail = v('respTecEmail', respTecEmail);
+    respTecFone = v('respTecFone', respTecFone);
   }
 }

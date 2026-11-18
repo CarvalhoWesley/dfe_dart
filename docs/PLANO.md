@@ -1,96 +1,89 @@
-# dfe_dart — Plano da v1 (NFe + NFC-e)
+# dfe_dart — Plano e estado (NF-e + NFC-e)
 
 Porte para Dart/Flutter do [ZeusFiscal](https://github.com/Hercules-NET/ZeusFiscal) (.NET), referência local:
 `D:\Pessoas\Outros\Projetos\zeus_fiscal`.
+
+> Última atualização: 2026-11-17. Validado em **homologação na SEFAZ-SP, Windows**.
 
 ## Decisões
 
 | Tema | Decisão |
 |---|---|
 | Escopo v1 | NF-e (mod. 55) e NFC-e (mod. 65), layout 4.00 |
-| Modelos | Gerados por script a partir de `NFe.Classes` / `DFe.Classes` (C#) |
+| Modelos | Modelo simplificado escrito à mão (`DadosNfe`); gerador a partir de `NFe.Classes` (C#) ainda pendente — substituirá o modelo aos poucos |
 | Certificado | Somente A1 (.pfx). A3 fora da v1 |
-| Plataformas | Android, iOS, Windows, Linux, macOS. **Sem Flutter Web** (TLS mútuo indisponível no navegador) |
-| Impressão | DANFE NF-e A4 em PDF; DANFE NFC-e em PDF (80mm) e ESC/POS |
-| Licença | LGPL (obra derivada do Zeus) |
-| API | Assíncrona (`Future`), configuração imutável injetada, retornos `sealed` |
+| Plataformas | Windows (validado); Android, Linux, iOS/macOS implementados, não validados. **Sem Flutter Web** |
+| Transporte | Plugável (`TransporteSoap`). `dart:io` não serve: as SEFAZ pedem o certificado por **renegociação TLS** e o BoringSSL recusa. Pilha nativa: WinHTTP/SChannel (Windows), libcurl (Linux), JSSE (Android), URLSession (Apple) |
+| QR Code NFC-e | v3 (NT 2025.001, sem CSC; em contingência assinado com o certificado) por padrão; v2 (CSC) opcional |
+| Impressão | A biblioteca **gera** (texto, PDF, PNG, bytes ESC/POS); o **app imprime** |
+| Licença | LGPL-2.1 (obra derivada do Zeus) |
+| API | Assíncrona (`Future`), configuração imutável injetada |
+| SDK | Dart 3.4 local → melos 6 + dependências `path` (sem pub workspaces) |
 
-## Estrutura (monorepo com melos)
+## Estrutura
 
 ```
 dfe_dart/
   packages/
-    dfe_core/     # XML, C14N, XMLDSig, PKCS#12, SOAP 1.2, chave de acesso, enums comuns
-    nfe/          # modelos gerados, URLs por UF, ServicosNFe, QR Code NFC-e, CSRT
-    nfe_danfe/    # DANFE NF-e A4 (pdf), NFC-e 80mm (pdf + ESC/POS)
+    dfe_core/            # PKCS#12, C14N, XMLDSig, SOAP 1.2, TransporteSoap
+    dfe_nfe/             # NF-e/NFC-e: montagem, QR Code, serviços, eventos, URLs
+    dfe_transporte_ffi/  # WinHTTP (Windows) e libcurl (Linux) via FFI
+    dfe_danfe/           # DANFE NFC-e (texto/PDF/ESC-POS) e NF-e A4 (PDF)
+    dfe_flutter/         # plugin: transporte Android/Apple, PNG do DANFE, app de exemplo
   tools/
-    gerador/      # C# (NFe.Classes) -> Dart
+    golden_assinatura/   # .NET: gera a assinatura de referência (lógica do Zeus)
   docs/
 ```
 
-Dependências previstas: `xml`, `pointycastle`, `asn1lib`, `crypto`, `http` (via `dart:io HttpClient` c/ `SecurityContext`), `pdf`, `printing`, `barcode`, `esc_pos_utils_plus`, `intl`.
+## Estado por fase
 
-## Mapeamento Zeus → Dart
+### Fase 0 — Prova técnica ✅
+- Assinatura **idêntica byte a byte** ao `SignedXml` do .NET (SHA1/SHA256), golden em `tools/golden_assinatura`.
+- PKCS#12 moderno (PBES2/AES) e legado (RC2-40/3DES).
+- Status do serviço (cStat 107) via transporte nativo.
+- Windows: chave importada com `PKCS12_NO_PERSIST_KEY`; importar via CNG (`PKCS12_ALWAYS_CNG_KSP`) quebrou a conexão com a SEFAZ-SP.
 
-| Zeus (.NET) | dfe_dart |
-|---|---|
-| `DFe.Utils/Assinatura/*`, `NFe.Utils/Assinatura/Assinador.cs` | `dfe_core/lib/src/assinatura/` (C14N + XMLDSig) |
-| `DFe.Utils/Assinatura/CertificadoDigital.cs` | `dfe_core/lib/src/certificado/` (PKCS#12) |
-| `DFe.Wsdl/*`, `NFe.Wsdl/*` | `dfe_core/lib/src/soap/` + clientes por serviço em `nfe` |
-| `DFe.Utils/ChaveFiscal.cs` | `dfe_core/lib/src/chave_fiscal.dart` |
-| `NFe.Utils/Enderecos/*` | `nfe/lib/src/enderecos/` (tabela UF × ambiente × serviço × modelo) |
-| `NFe.Classes/**` | `nfe/lib/src/classes/**` (gerado) |
-| `NFe.Utils/InformacoesSuplementares/ExtinfNFeSupl.cs` | `nfe/lib/src/qrcode/` |
-| `NFe.Utils/InfRespTec/GerarHashCSRT.cs` | `nfe/lib/src/csrt.dart` |
-| `NFe.Servicos/ServicosNFe.cs` | `nfe/lib/src/servicos_nfe.dart` |
-| `NFe.Danfe.*` | `nfe_danfe` |
+### Fase 1 — Gerador de modelos ⏳ pendente
+- Gerador lendo `NFe.Classes`/`DFe.Classes` (C#) → classes Dart com `toXml()`/`fromXml()`.
+- Pronto quando: ida e volta sem diferenças em XMLs reais.
 
-## Fases
+### Fase 2 — NFC-e ✅ (SP)
+- Autorização síncrona, consulta, cancelamento, contingência offline (tpEmis 9) com reenvio, QR Code v2/v3.
+- Inutilização implementada; **SEFAZ-SP retorna 998 (serviço desativado)** — botões removidos do app.
+- Pendente: tabela completa de URLs por UF (hoje SP, UFs SVRS, SVC-AN/RS; QR Code só SP) e validação em uma 2ª UF.
 
-### Fase 0 — Prova técnica (risco principal)
-- Carregar .pfx (chave privada + cadeia) com pointycastle/asn1lib.
-- C14N inclusiva (`http://www.w3.org/TR/2001/REC-xml-c14n-20010315`) + transform enveloped.
-- Assinar `infNFe` e comparar **byte a byte** com a saída do Zeus para o mesmo XML/certificado.
-- `NfeStatusServico` em homologação via `HttpClient` + `SecurityContext`.
-- **Pronto quando:** assinatura idêntica e cStat 107 em homologação.
-- **Status (2026-11-17):** assinatura idêntica a byte ao `SignedXml` do .NET (SHA1 e SHA256), golden gerado por `tools/golden_assinatura`; PKCS#12 moderno (PBES2/AES) e legado (RC2-40/3DES) lidos. **Pendente:** cStat 107 com certificado A1 real (`packages/nfe/example/status_homologacao.dart`).
-- **Descoberta (2026-11-17):** as SEFAZ pedem o certificado do cliente por renegociação TLS após a requisição HTTP; o BoringSSL do `dart:io` recusa (`NO_RENEGOTIATION`). Decisão: transporte plugável (`TransporteSoap`) com pilha nativa:
-  - `dfe_transporte_ffi`: WinHTTP/SChannel (Windows, **validado contra SEFAZ-SP**: passa da renegociação) e libcurl/OpenSSL (Linux, não testado).
-  - `dfe_flutter` (plugin Flutter): Android (JSSE, compila; renegociação a validar em aparelho), iOS/macOS (URLSession, não compilado — requer Mac).
-  - Ponto de atenção Windows: chave importada com `PKCS12_NO_PERSIST_KEY` (provedor legado). Importar via CNG (`PKCS12_ALWAYS_CNG_KSP`) quebrou a conexão com a SEFAZ-SP.
-- Observação: SDK local é Dart 3.4, então o monorepo usa melos 6 + dependências `path` (sem pub workspaces).
+### Fase 3 — NF-e ✅ parcial
+- Feito: autorização síncrona/assíncrona (recibo), contingência SVC-AN/SVC-RS, consulta, cancelamento.
+- Pendente: **CC-e**, manifestação do destinatário, distribuição DF-e, consulta de cadastro, EPEC.
 
-### Fase 1 — dfe_core + gerador
-- Gerador lê `.cs` de `NFe.Classes`/`DFe.Classes`: propriedades, `[XmlElement]`, `[XmlAttribute]`, `[XmlIgnore]`, enums com `[XmlEnum]`, propriedades de formatação (`*Proxy`, decimais com N casas), ordem dos elementos.
-- Gera classes Dart imutáveis com `toXml()` / `fromXml()`; pontos não traduzíveis automaticamente marcados para revisão manual.
-- **Pronto quando:** ida e volta sem diferenças nos XMLs de `NFe.Utils.Testes`/`DFe.Testes` + XMLs reais.
+### Fase 4 — Impressão ✅
+- DANFE NFC-e: texto (48/32 col.), PDF bobina, PNG, ESC/POS (CP860/CP850/sem acento, QR nativo ou raster, corte, gaveta).
+- DANFE NF-e: PDF A4 multipágina conforme MOC, PNG por folha, marcas d'água.
+- Pendente: PDF de eventos (CC-e/cancelamento).
 
-### Fase 2 — NFC-e
-- Autorização síncrona (`NFeAutorizacao` indSinc=1), consulta de protocolo, cancelamento (inclusive por substituição), inutilização.
-- Montagem de `nfeProc`, QR Code v2 (online e contingência offline), `urlChave`.
-- Contingência offline (tpEmis 9) e reenvio.
-- **Pronto quando:** emitir/cancelar/inutilizar em homologação em ≥ 2 UFs (ex.: SVRS e SP).
+### Fase 5 — Tributação ampliada 🔧 em andamento
+- ICMS (CRT 3: 00/10/20/40/41/50/60; Simples: 101/102/103/201/202/300/400/500/900), PIS/COFINS (alíquota, NT, outras), IPI.
+- Desconto, frete, seguro e outras despesas por item; totais calculados.
+- Pagamentos múltiplos, cartão (`card`), troco; `infRespTec`.
 
-### Fase 3 — NF-e
-- Autorização assíncrona + `NFeRetAutorizacao` (recibo), CC-e, manifestação do destinatário, `NfeDistDFeInteresse` (descompactar docZip), `NfeConsultaCadastro`, EPEC.
-- **Pronto quando:** paridade com esses métodos de `ServicosNFe` em homologação.
+### Fase 6 — Reforma tributária ⏳ pendente
+- Grupos IBS/CBS (NT 2025.002) nos itens e totais.
 
-### Fase 4 — Impressão
-- DANFE NFC-e 80mm (PDF e ESC/POS com QR Code), DANFE NF-e A4 retrato (PDF), eventos (CC-e/cancelamento) em PDF.
-- **Pronto quando:** layout conferido contra os DANFEs do Zeus (QuestPdf) para os mesmos XMLs.
+### Plataformas ⏳ pendente
+- Validar Android (GPOS780S), Linux, iOS/macOS.
 
 ### Fora da v1
-CT-e, MDF-e, eventos IBS/CBS da reforma tributária, A3, validação completa por XSD, Flutter Web.
+CT-e, MDF-e, A3, validação completa por XSD, Flutter Web.
 
 ## Testes
-- Unitários com fixtures copiadas de `NFe.Utils.Testes` e `DFe.Testes`.
-- Golden tests de assinatura (saída do Zeus como referência).
-- Integração em homologação, habilitada por variáveis de ambiente (`DFE_PFX_PATH`, `DFE_PFX_SENHA`, `DFE_UF`) — nunca versionar certificados.
+- Unitários por pacote (`dart test`), golden de assinatura, testes de rede do WinHTTP contra a SEFAZ-SP.
+- Homologação manual pelo app de exemplo (Windows); XMLs gravados em `Documentos\dfe_dart\xml`.
+- Nunca versionar certificados reais.
 
 ## Riscos
 | Risco | Mitigação |
 |---|---|
-| C14N divergente → rejeição 297 | Fase 0 dedicada, golden tests byte a byte |
-| PKCS#12 com algoritmos legados (RC2/3DES) | Suportar PBE legado no parser; fallback documentado |
-| Diferenças de URL/versão por UF | Portar tabela do Zeus e cobrir com testes |
-| Formatação de decimais/datas (TZD) | Portar regras de `DataHoraOffSet`/proxies via gerador |
+| C14N divergente → rejeição 297 | Golden byte a byte contra o .NET |
+| Renegociação TLS em outras plataformas | Transporte nativo por plataforma; validar em cada uma |
+| Diferenças de URL/versão por UF | Portar a tabela completa do Zeus |
+| Regras de validação por UF (rejeições) | Testar em homologação por UF atendida |

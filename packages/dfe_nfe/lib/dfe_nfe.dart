@@ -6,6 +6,7 @@ export 'src/emissao/dados_nfe.dart';
 export 'src/emissao/emissor.dart';
 export 'src/emissao/montador_nfe.dart';
 export 'src/emissao/qrcode_nfce.dart';
+export 'src/emissao/tributos.dart';
 export 'src/enderecos.dart';
 export 'src/enums.dart';
 export 'src/eventos/eventos.dart';

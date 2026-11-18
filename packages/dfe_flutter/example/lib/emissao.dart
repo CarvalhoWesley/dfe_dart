@@ -70,20 +70,67 @@ class EmissaoTeste {
       destinatario: nfe
           ? Destinatario(nome: 'CONSUMIDOR TESTE', cpf: '11144477735', endereco: _endereco)
           : null,
-      itens: const [
-        ItemNfe(
-          codigo: '0001',
-          descricao: 'PRODUTO DE TESTE',
+      itens: _itens(),
+      pagamentos: _pagamentos(_itens()),
+      informacoesComplementares: 'Documento emitido pelo app de testes do dfe_dart '
+          '(tributação: ${cfg.tributacao}, pagamento: ${cfg.pagamento})',
+      responsavelTecnico: cfg.respTecCnpj.isEmpty
+          ? null
+          : ResponsavelTecnico(
+              cnpj: cfg.respTecCnpj,
+              contato: cfg.respTecContato,
+              email: cfg.respTecEmail,
+              fone: cfg.respTecFone,
+            ),
+    );
+  }
+
+  /// Dois itens com o cenário de tributação escolhido e o desconto rateado.
+  List<ItemNfe> _itens() {
+    final (Icms icms, PisCofins pis, PisCofins cofins) = switch (cfg.tributacao) {
+      'sn101' => (const Csosn101(aliquotaCredito: 2.56), const PisCofins.outros(cst: '49'),
+          const PisCofins.outros(cst: '49')),
+      'normal00' => (const Icms00(aliquota: 18), const PisCofins.aliquota(aliquota: 1.65),
+          const PisCofins.aliquota(aliquota: 7.6)),
+      'normal40' => (const Icms40(), const PisCofins.naoTributado(), const PisCofins.naoTributado()),
+      _ => (const Csosn102(), const PisCofins.naoTributado(), const PisCofins.naoTributado()),
+    };
+    ItemNfe item(String cod, String desc, double qtd, double unit, double desconto) => ItemNfe(
+          codigo: cod,
+          descricao: desc,
           ncm: '21069090',
           cfop: '5102',
           unidade: 'UN',
-          quantidade: 1,
-          valorUnitario: 10,
-        ),
-      ],
-      pagamentos: const [Pagamento(tipo: '01', valor: 10)],
-      informacoesComplementares: 'Documento emitido pelo app de testes do dfe_dart',
-    );
+          quantidade: qtd,
+          valorUnitario: unit,
+          icms: icms,
+          pis: pis,
+          cofins: cofins,
+          desconto: desconto,
+          valorTributos: arredondar(qtd * unit * 0.1345), // estimativa IBPT para teste
+        );
+    final base = [item('0001', 'PRODUTO DE TESTE A', 1, 10, 0), item('0002', 'PRODUTO DE TESTE B', 2, 12.5, 0)];
+    final descontos = ratear(cfg.desconto, base);
+    return [
+      item('0001', 'PRODUTO DE TESTE A', 1, 10, descontos[0]),
+      item('0002', 'PRODUTO DE TESTE B', 2, 12.5, descontos[1]),
+    ];
+  }
+
+  List<Pagamento> _pagamentos(List<ItemNfe> itens) {
+    final total = TotaisNfe.calcular(itens).vNF;
+    const cartao = Cartao(bandeira: '01', autorizacao: '123456');
+    return switch (cfg.pagamento) {
+      'credito' => [Pagamento(tipo: '03', valor: total, cartao: cartao)],
+      'debito' => [Pagamento(tipo: '04', valor: total, cartao: cartao)],
+      'pix' => [Pagamento(tipo: '17', valor: total)],
+      'misto' => [
+          Pagamento(tipo: '03', valor: arredondar(total / 2), cartao: cartao),
+          Pagamento(tipo: '01', valor: arredondar(total - arredondar(total / 2) + 5)), // com troco
+        ],
+      // Dinheiro arredondado para a dezena seguinte, gerando troco.
+      _ => [Pagamento(tipo: '01', valor: ((total / 10).floor() + 1) * 10.0)],
+    };
   }
 
   // --- Arquivos -------------------------------------------------------------

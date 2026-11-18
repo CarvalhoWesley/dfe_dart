@@ -112,15 +112,22 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
   // det
   for (var i = 0; i < d.itens.length; i++) {
     final it = d.itens[i];
+    if (nfce && it.ipi != null) {
+      throw ArgumentError('NFC-e não admite o grupo IPI (item ${i + 1})');
+    }
     final desc = hom && i == 0 ? textoHomologacaoItem : it.descricao;
     final q = formatarDecimal(it.quantidade, 4);
     final vu = formatarDecimal(it.valorUnitario, 10);
+    final base = it.baseCalculo;
+    String? opcional(String tag, double v) => v > 0 ? _t(tag, formatarDecimal(v)) : null;
     x
       ..write('<det nItem="${i + 1}"><prod>')
       ..write(_t('cProd', it.codigo))
       ..write(_t('cEAN', it.gtin))
       ..write(_t('xProd', desc))
       ..write(_t('NCM', it.ncm))
+      ..write(it.cest == null ? '' : _t('CEST', it.cest!))
+      ..write(it.codigoBeneficio == null ? '' : _t('cBenef', it.codigoBeneficio!))
       ..write(_t('CFOP', it.cfop))
       ..write(_t('uCom', it.unidade))
       ..write(_t('qCom', q))
@@ -130,42 +137,70 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
       ..write(_t('uTrib', it.unidade))
       ..write(_t('qTrib', q))
       ..write(_t('vUnTrib', vu))
+      ..write(opcional('vFrete', it.frete) ?? '')
+      ..write(opcional('vSeg', it.seguro) ?? '')
+      ..write(opcional('vDesc', it.desconto) ?? '')
+      ..write(opcional('vOutro', it.outrasDespesas) ?? '')
       ..write(_t('indTot', '1'))
       ..write('</prod><imposto>')
-      ..write('<ICMS><ICMSSN${it.csosn}>')
-      ..write(_t('orig', '${it.origem}'))
-      ..write(_t('CSOSN', it.csosn))
-      ..write('</ICMSSN${it.csosn}></ICMS>')
-      ..write('<PIS><PISNT>${_t('CST', '07')}</PISNT></PIS>')
-      ..write('<COFINS><COFINSNT>${_t('CST', '07')}</COFINSNT></COFINS>')
+      ..write(it.valorTributos == null ? '' : _t('vTotTrib', formatarDecimal(it.valorTributos!)))
+      ..write('<ICMS>${it.icms.xml(base)}</ICMS>')
+      ..write(it.ipi?.xml(base) ?? '')
+      ..write('<PIS>${it.pis.xml('PIS', base)}</PIS>')
+      ..write('<COFINS>${it.cofins.xml('COFINS', base)}</COFINS>')
       ..write('</imposto></det>');
   }
 
   // total
-  final vProd = formatarDecimal(d.valorProdutos);
-  const z = '0.00';
+  final tot = d.totais;
+  String v(double n) => formatarDecimal(n);
   x.write('<total><ICMSTot>');
-  for (final (tag, v) in [
-    ('vBC', z), ('vICMS', z), ('vICMSDeson', z), ('vFCP', z), ('vBCST', z),
-    ('vST', z), ('vFCPST', z), ('vFCPSTRet', z), ('vProd', vProd), ('vFrete', z),
-    ('vSeg', z), ('vDesc', z), ('vII', z), ('vIPI', z), ('vIPIDevol', z),
-    ('vPIS', z), ('vCOFINS', z), ('vOutro', z), ('vNF', vProd),
+  for (final (tag, valor) in [
+    ('vBC', tot.icms.vBC), ('vICMS', tot.icms.vICMS), ('vICMSDeson', tot.icms.vICMSDeson),
+    ('vFCP', tot.icms.vFCP), ('vBCST', tot.icms.vBCST), ('vST', tot.icms.vST),
+    ('vFCPST', tot.icms.vFCPST), ('vFCPSTRet', 0.0), ('vProd', tot.vProd), ('vFrete', tot.vFrete),
+    ('vSeg', tot.vSeg), ('vDesc', tot.vDesc), ('vII', 0.0), ('vIPI', tot.vIPI), ('vIPIDevol', 0.0),
+    ('vPIS', tot.vPIS), ('vCOFINS', tot.vCOFINS), ('vOutro', tot.vOutro), ('vNF', tot.vNF),
   ]) {
-    x.write(_t(tag, v));
+    x.write(_t(tag, v(valor)));
   }
+  if (tot.vTotTrib > 0) x.write(_t('vTotTrib', v(tot.vTotTrib)));
   x.write('</ICMSTot></total>');
 
   x.write('<transp>${_t('modFrete', '9')}</transp>');
 
   // pag
+  if (d.pagamentos.isEmpty) throw ArgumentError('Informe ao menos um pagamento');
   x.write('<pag>');
   var pago = 0.0;
   for (final p in d.pagamentos) {
     pago += p.valor;
-    x.write('<detPag>${_t('tPag', p.tipo)}${_t('vPag', formatarDecimal(p.valor))}</detPag>');
+    if (p.tipo == '99' && (p.descricao ?? '').length < 2) {
+      throw ArgumentError('Pagamento tipo 99 exige descrição (xPag)');
+    }
+    x
+      ..write('<detPag>')
+      ..write(p.aPrazo ? _t('indPag', '1') : '')
+      ..write(_t('tPag', p.tipo))
+      ..write(p.descricao == null ? '' : _t('xPag', p.descricao!))
+      ..write(_t('vPag', v(p.valor)));
+    if (p.exigeCartao || p.cartao != null) {
+      final c = p.cartao ?? const Cartao();
+      x
+        ..write('<card>${_t('tpIntegra', c.integrado ? '1' : '2')}')
+        ..write(c.cnpjCredenciadora == null ? '' : _t('CNPJ', c.cnpjCredenciadora!))
+        ..write(c.bandeira == null ? '' : _t('tBand', c.bandeira!))
+        ..write(c.autorizacao == null ? '' : _t('cAut', c.autorizacao!))
+        ..write('</card>');
+    }
+    x.write('</detPag>');
   }
-  final troco = pago - d.valorProdutos;
-  if (troco > 0.004) x.write(_t('vTroco', formatarDecimal(troco)));
+  final semPagamento = d.pagamentos.every((p) => p.tipo == '90');
+  if (!semPagamento && pago + 0.004 < tot.vNF) {
+    throw ArgumentError('Pagamentos (${v(pago)}) menores que o total da nota (${v(tot.vNF)})');
+  }
+  final troco = arredondar(pago - tot.vNF);
+  if (!semPagamento && troco > 0) x.write(_t('vTroco', v(troco)));
   x.write('</pag>');
 
   if (d.informacoesComplementares != null) {

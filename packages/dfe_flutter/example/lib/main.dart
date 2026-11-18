@@ -165,7 +165,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _opcao(String rotulo, String valor, Map<String, String> opcoes, void Function(String) set) =>
       SizedBox(
-        width: 200,
+        width: opcoes.values.any((t) => t.length > 22) ? 300 : 200,
         child: DropdownButtonFormField<String>(
           initialValue: opcoes.containsKey(valor) ? valor : opcoes.keys.first,
           decoration: InputDecoration(labelText: rotulo),
@@ -231,6 +231,30 @@ class _HomePageState extends State<HomePage> {
         campo('Versão (v2 ou v3)', cfg.versaoQr, (v) => cfg.versaoQr = v.trim(), largura: 160),
         campo('ID do CSC (v2)', cfg.idCsc, (v) => cfg.idCsc = v.trim(), largura: 160),
         campo('CSC (v2)', cfg.csc, (v) => cfg.csc = v.trim(), segredo: true),
+      ]),
+      secao('Cenário da venda de teste (2 itens: R\$ 10,00 + 2 × R\$ 12,50)', [
+        _opcao('Tributação', cfg.tributacao, {
+          'sn102': 'Simples - CSOSN 102',
+          'sn101': 'Simples - CSOSN 101 (crédito 2,56%)',
+          'normal00': 'Normal - CST 00 (ICMS 18%, PIS/COFINS)',
+          'normal40': 'Normal - CST 40 (isenta)',
+        }, (v) => cfg.tributacao = v),
+        _opcao('Pagamento', cfg.pagamento, {
+          'dinheiro': 'Dinheiro (com troco)',
+          'credito': 'Cartão de crédito',
+          'debito': 'Cartão de débito',
+          'pix': 'PIX',
+          'misto': 'Crédito + dinheiro',
+        }, (v) => cfg.pagamento = v),
+        campo('Desconto na venda (R\$, rateado)', cfg.desconto.toStringAsFixed(2),
+            (v) => cfg.desconto = double.tryParse(v.replaceAll(',', '.')) ?? 0, largura: 220),
+      ]),
+      secao('Responsável técnico (infRespTec) — deixe o CNPJ vazio para não enviar', [
+        campo('CNPJ', cfg.respTecCnpj, (v) => cfg.respTecCnpj = v.replaceAll(RegExp(r'\D'), '')),
+        campo('Contato', cfg.respTecContato, (v) => cfg.respTecContato = v),
+        campo('E-mail', cfg.respTecEmail, (v) => cfg.respTecEmail = v.trim()),
+        campo('Fone', cfg.respTecFone, (v) => cfg.respTecFone = v.replaceAll(RegExp(r'\D'), ''),
+            largura: 160),
       ]),
       secao('DANFE NFC-e e impressora (ESC/POS)', [
         _opcao('Papel', cfg.colunas <= 32 ? '58' : '80', {'80': '80 mm (48 col.)', '58': '58 mm (32 col.)'},
