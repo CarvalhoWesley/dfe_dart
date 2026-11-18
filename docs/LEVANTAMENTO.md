@@ -148,7 +148,7 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 | B5 | ✅ **(2026-11-18)** Tipos de emissão completos (`tpEmis` 2 FS, 3 SCAN, 4 EPEC, 5 FS-DA) | ✅ |
 | B6 | ⚠️ **Parcial (2026-11-18):** feitos cancelamento por substituição (110112), EPEC (110140, Ambiente Nacional), manifestação do destinatário (210200/210210/210220/210240) e evento genérico (`montarEvento` + `DetalheEvento`). **Pendentes:** ator interessado, comprovante/insucesso de entrega (o Zeus emite `latGPS`/`longGPS` antes de `dhEntrega` — conferir com o schema), conciliação financeira, eventos da reforma | ✅ |
 | B7 | ✅ **(2026-11-18)** **Hash CSRT** (`infRespTec`) — validado com o exemplo da NT; a sobrecarga do Zeus que recebe a NF-e usa "NFe" no lugar da chave (erro do Zeus) | ✅ |
-| B8 | NF-e: `finNFe` 2/3/4 com `NFref`, entrega/retirada, autXML, intermediador, exportação, compra, cana | ✅ |
+| B8 | ⚠️ **Parcial (2026-11-18):** feitos `finNFe`/`tpNF`/`dhSaiEnt`, `NFref` (NF-e/NFC-e, CT-e, NF mod. 1, produtor rural, ECF), retirada/entrega, autXML, intermediador (`indIntermed`/`infIntermed`), cobrança (fatura/duplicatas), transporte (transportadora, veículo, volumes) e dest com IE/ISUF/IM/estrangeiro. **Pendentes:** exportação, compra, cana, agropecuário, `gCompraGov`, `gPagAntecipado`, reboque/vagão/balsa, lacres | ✅ |
 | B9 | Distribuição DF-e, consulta de cadastro, download | ✅ |
 | B10 | **Feito (2026-11-18):** emissão anêmica no `dfe_nfe` e cálculos no `dfe_calculos`; regressão com XML idêntico ao anterior | — |
 

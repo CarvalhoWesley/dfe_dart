@@ -1,7 +1,9 @@
 import '../enums.dart';
 import '../tributacao/imposto.dart';
+import 'grupos_nfe.dart';
 
 export '../tributacao/imposto.dart';
+export 'grupos_nfe.dart';
 
 /// Modelo de dados da NF-e/NFC-e para emissão.
 ///
@@ -55,10 +57,24 @@ class Emitente {
 }
 
 class Destinatario {
-  const Destinatario({required this.nome, this.cpf, this.cnpj, this.endereco, this.email, this.indIEDest = 9});
+  const Destinatario({
+    required this.nome,
+    this.cpf,
+    this.cnpj,
+    this.idEstrangeiro,
+    this.endereco,
+    this.email,
+    this.indIEDest = 9,
+    this.ie,
+    this.inscricaoSuframa,
+    this.inscricaoMunicipal,
+  });
 
   final String? cpf;
   final String? cnpj;
+
+  /// Documento de estrangeiro (idEstrangeiro).
+  final String? idEstrangeiro;
   final String nome;
   final Endereco? endereco;
   final String? email;
@@ -66,8 +82,27 @@ class Destinatario {
   /// 1 contribuinte, 2 isento, 9 não contribuinte.
   final int indIEDest;
 
+  /// IE do destinatário (com indIEDest = 1).
+  final String? ie;
+
+  /// ISUF.
+  final String? inscricaoSuframa;
+
+  /// IM.
+  final String? inscricaoMunicipal;
+
   Destinatario copiarCom({String? nome}) => Destinatario(
-      nome: nome ?? this.nome, cpf: cpf, cnpj: cnpj, endereco: endereco, email: email, indIEDest: indIEDest);
+        nome: nome ?? this.nome,
+        cpf: cpf,
+        cnpj: cnpj,
+        idEstrangeiro: idEstrangeiro,
+        endereco: endereco,
+        email: email,
+        indIEDest: indIEDest,
+        ie: ie,
+        inscricaoSuframa: inscricaoSuframa,
+        inscricaoMunicipal: inscricaoMunicipal,
+      );
 }
 
 /// Item da nota (grupos `prod` e `imposto`), com valores informados pelo app.
@@ -238,6 +273,16 @@ class DadosNfe {
     this.consumidorFinal = true,
     this.destinoOperacao = 1,
     this.finalidade = 1,
+    this.tipoOperacao = 1,
+    this.dataSaidaEntrada,
+    this.indicadorIntermediador,
+    this.referencias = const [],
+    this.retirada,
+    this.entrega,
+    this.autorizadosXml = const [],
+    this.intermediador,
+    this.cobranca,
+    this.transporte,
   }) : dataEmissao = dataEmissao ?? DateTime.now();
 
   final ModeloDocumento modelo;
@@ -285,6 +330,28 @@ class DadosNfe {
   /// finNFe: 1 normal, 2 complementar, 3 ajuste, 4 devolução.
   final int finalidade;
 
+  /// tpNF: 0 entrada, 1 saída.
+  final int tipoOperacao;
+
+  /// dhSaiEnt (NF-e).
+  final DateTime? dataSaidaEntrada;
+
+  /// indIntermed: 0 sem intermediador, 1 em site/plataforma de terceiros.
+  final int? indicadorIntermediador;
+
+  /// Documentos referenciados (NFref).
+  final List<ReferenciaNfe> referencias;
+  final LocalNfe? retirada;
+  final LocalNfe? entrega;
+
+  /// CNPJ (14) ou CPF (11) autorizados a baixar o XML (autXML).
+  final List<String> autorizadosXml;
+  final Intermediador? intermediador;
+  final Cobranca? cobranca;
+
+  /// Transporte completo; se nulo, usa só [modalidadeFrete].
+  final Transporte? transporte;
+
   DadosNfe copiarCom({
     List<ItemNfe>? itens,
     Destinatario? destinatario,
@@ -317,5 +384,15 @@ class DadosNfe {
         consumidorFinal: consumidorFinal,
         destinoOperacao: destinoOperacao,
         finalidade: finalidade,
+        tipoOperacao: tipoOperacao,
+        dataSaidaEntrada: dataSaidaEntrada,
+        indicadorIntermediador: indicadorIntermediador,
+        referencias: referencias,
+        retirada: retirada,
+        entrega: entrega,
+        autorizadosXml: autorizadosXml,
+        intermediador: intermediador,
+        cobranca: cobranca,
+        transporte: transporte,
       );
 }

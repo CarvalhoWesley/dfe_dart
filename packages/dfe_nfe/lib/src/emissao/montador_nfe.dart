@@ -50,7 +50,8 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
     ..write(_t('serie', '${d.serie}'))
     ..write(_t('nNF', '${d.numero}'))
     ..write(_t('dhEmi', formatarDataHora(d.dataEmissao)))
-    ..write(_t('tpNF', '1'))
+    ..write(d.dataSaidaEntrada == null ? '' : _t('dhSaiEnt', formatarDataHora(d.dataSaidaEntrada!)))
+    ..write(_t('tpNF', '${d.tipoOperacao}'))
     ..write(_t('idDest', '${d.destinoOperacao}'))
     ..write(_t('cMunFG', '${d.emitente.endereco.codigoMunicipio}'))
     ..write(_t('tpImp', nfce ? '4' : '1'))
@@ -60,12 +61,16 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
     ..write(_t('finNFe', '${d.finalidade}'))
     ..write(_t('indFinal', d.consumidorFinal ? '1' : '0'))
     ..write(_t('indPres', '${d.indicadorPresenca}'))
+    ..write(d.indicadorIntermediador == null ? '' : _t('indIntermed', '${d.indicadorIntermediador}'))
     ..write(_t('procEmi', '0'))
     ..write(_t('verProc', d.versaoAplicativo));
   if (d.tipoEmissao.contingencia) {
     x
       ..write(_t('dhCont', formatarDataHora(d.dataContingencia ?? d.dataEmissao)))
       ..write(_t('xJust', d.justificativaContingencia ?? ''));
+  }
+  for (final r in d.referencias) {
+    x.write(r.xml());
   }
   x.write('</ide>');
 
@@ -92,12 +97,22 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
       x.write(_t('CNPJ', dest.cnpj!));
     } else if (dest.cpf != null) {
       x.write(_t('CPF', dest.cpf!));
+    } else if (dest.idEstrangeiro != null) {
+      x.write(_t('idEstrangeiro', dest.idEstrangeiro!));
     }
     x.write(_t('xNome', dest.nome));
     if (dest.endereco != null) x.write(_endereco('enderDest', dest.endereco!));
     x.write(_t('indIEDest', '${dest.indIEDest}'));
+    if (dest.ie != null) x.write(_t('IE', dest.ie!));
+    if (dest.inscricaoSuframa != null) x.write(_t('ISUF', dest.inscricaoSuframa!));
+    if (dest.inscricaoMunicipal != null) x.write(_t('IM', dest.inscricaoMunicipal!));
     if (dest.email != null) x.write(_t('email', dest.email!));
     x.write('</dest>');
+  }
+  if (d.retirada != null) x.write(d.retirada!.xml('retirada'));
+  if (d.entrega != null) x.write(d.entrega!.xml('entrega'));
+  for (final a in d.autorizadosXml) {
+    x.write('<autXML>${_t(a.length == 14 ? 'CNPJ' : 'CPF', a)}</autXML>');
   }
 
   // det
@@ -135,9 +150,9 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
   }
 
   // total
-  x
-    ..write(d.total.xml())
-    ..write('<transp>${_t('modFrete', '${d.modalidadeFrete}')}</transp>');
+  x.write(d.total.xml());
+  x.write(d.transporte?.xml() ?? '<transp>${_t('modFrete', '${d.modalidadeFrete}')}</transp>');
+  if (d.cobranca != null) x.write(d.cobranca!.xml());
 
   // pag
   x.write('<pag>');
@@ -161,6 +176,8 @@ NfeMontada montarNfe(DadosNfe d, {Random? random}) {
   }
   if (d.troco != null && d.troco! > 0) x.write(_t('vTroco', formatarDecimal(d.troco!)));
   x.write('</pag>');
+
+  if (d.intermediador != null) x.write(d.intermediador!.xml());
 
   if (d.informacoesComplementares != null) {
     x.write('<infAdic>${_t('infCpl', d.informacoesComplementares!)}</infAdic>');
