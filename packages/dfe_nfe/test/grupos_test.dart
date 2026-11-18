@@ -7,6 +7,7 @@ Object _exemplo(CampoGrupo c) => switch (c.tipo) {
       TipoCampo.dec => 1.5,
       TipoCampo.int => 2,
       TipoCampo.str => 'X',
+      TipoCampo.dh => DateTime(2026, 11, 18, 10),
       TipoCampo.grp => _GrupoExemplo(c.classe!),
     };
 

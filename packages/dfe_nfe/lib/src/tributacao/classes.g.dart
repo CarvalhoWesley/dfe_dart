@@ -2587,3 +2587,689 @@ class Lacres implements GrupoXml {
       };
 }
 
+/// Grupo `evento.detEvento` (classe `evento.detEvento` do Zeus). Valores informados pelo app.
+class EventoDetEvento implements GrupoXml {
+  const EventoDetEvento({
+    this.versao,
+    this.descEvento,
+    this.xCorrecao,
+    this.xCondUso,
+    this.cOrgaoAutor,
+    this.tpAutor,
+    this.verAplic,
+    this.dhEmi,
+    this.tpNF,
+    this.ie,
+    this.dest,
+    this.nProt,
+    this.xJust,
+    this.chNFeRef,
+    this.itensAverbados,
+    this.tpEventoAut,
+    this.nProtEvento,
+    this.dhTentativaEntrega,
+    this.nTentativa,
+    this.tpMotivo,
+    this.xJustMotivo,
+    this.latGPS,
+    this.longGPS,
+    this.hashTentativaEntrega,
+    this.dhHashTentativaEntrega,
+    this.dhEntrega,
+    this.nDoc,
+    this.xNome,
+    this.hashComprovante,
+    this.dhHashComprovante,
+    this.detPag,
+    this.gPerecimento,
+    this.indQuitacao,
+    this.gConsumo,
+    this.gItemNaoFornecido,
+    this.gCredPresOper,
+    this.indAceitacao,
+    this.gImobilizacao,
+    this.gConsumoComb,
+    this.gCredito,
+    this.indDeferimento,
+    this.cMotivo,
+    this.xMotivo,
+  });
+
+  /// `versao`
+  final String? versao;
+  /// `descEvento`
+  final String? descEvento;
+  /// `xCorrecao`
+  final String? xCorrecao;
+  /// `xCondUso`
+  final String? xCondUso;
+  /// `cOrgaoAutor`
+  final String? cOrgaoAutor;
+  /// `tpAutor`
+  final String? tpAutor;
+  /// `verAplic`
+  final String? verAplic;
+  /// `dhEmi`
+  final DateTime? dhEmi;
+  /// `tpNF`
+  final String? tpNF;
+  /// `IE`
+  final String? ie;
+  /// `dest`
+  final EventoDest? dest;
+  /// `nProt`
+  final String? nProt;
+  /// `xJust`
+  final String? xJust;
+  /// `chNFeRef`
+  final String? chNFeRef;
+  /// `itensAverbados`
+  final List<EventoItensAverbados>? itensAverbados;
+  /// `tpEventoAut`
+  final String? tpEventoAut;
+  /// `nProtEvento`
+  final String? nProtEvento;
+  /// `dhTentativaEntrega`
+  final DateTime? dhTentativaEntrega;
+  /// `nTentativa`
+  final int? nTentativa;
+  /// `tpMotivo`
+  final String? tpMotivo;
+  /// `xJustMotivo`
+  final String? xJustMotivo;
+  /// `latGPS`
+  final double? latGPS;
+  /// `longGPS`
+  final double? longGPS;
+  /// `hashTentativaEntrega`
+  final String? hashTentativaEntrega;
+  /// `dhHashTentativaEntrega`
+  final DateTime? dhHashTentativaEntrega;
+  /// `dhEntrega`
+  final DateTime? dhEntrega;
+  /// `nDoc`
+  final String? nDoc;
+  /// `xNome`
+  final String? xNome;
+  /// `hashComprovante`
+  final String? hashComprovante;
+  /// `dhHashComprovante`
+  final DateTime? dhHashComprovante;
+  /// `detPag`
+  final List<EventoDetPagEvento>? detPag;
+  /// `gPerecimento`
+  final List<EventoGPerecimento>? gPerecimento;
+  /// `indQuitacao`
+  final String? indQuitacao;
+  /// `gConsumo`
+  final List<EventoGConsumo>? gConsumo;
+  /// `gItemNaoFornecido`
+  final List<EventoGItemNaoFornecido>? gItemNaoFornecido;
+  /// `gCredPresOper`
+  final List<EventoGCredPresOper>? gCredPresOper;
+  /// `indAceitacao`
+  final String? indAceitacao;
+  /// `gImobilizacao`
+  final List<EventoGImobilizacao>? gImobilizacao;
+  /// `gConsumoComb`
+  final List<EventoGConsumoComb>? gConsumoComb;
+  /// `gCredito`
+  final List<EventoGCredito>? gCredito;
+  /// `indDeferimento`
+  final String? indDeferimento;
+  /// `cMotivo`
+  final String? cMotivo;
+  /// `xMotivo`
+  final String? xMotivo;
+
+  @override
+  String get grupo => 'evento.detEvento';
+
+  @override
+  Map<String, Object?> get valores => {
+        'versao': versao,
+        'descEvento': descEvento,
+        'xCorrecao': xCorrecao,
+        'xCondUso': xCondUso,
+        'cOrgaoAutor': cOrgaoAutor,
+        'tpAutor': tpAutor,
+        'verAplic': verAplic,
+        'dhEmi': dhEmi,
+        'tpNF': tpNF,
+        'IE': ie,
+        'dest': dest,
+        'nProt': nProt,
+        'xJust': xJust,
+        'chNFeRef': chNFeRef,
+        'itensAverbados': itensAverbados,
+        'tpEventoAut': tpEventoAut,
+        'nProtEvento': nProtEvento,
+        'dhTentativaEntrega': dhTentativaEntrega,
+        'nTentativa': nTentativa,
+        'tpMotivo': tpMotivo,
+        'xJustMotivo': xJustMotivo,
+        'latGPS': latGPS,
+        'longGPS': longGPS,
+        'hashTentativaEntrega': hashTentativaEntrega,
+        'dhHashTentativaEntrega': dhHashTentativaEntrega,
+        'dhEntrega': dhEntrega,
+        'nDoc': nDoc,
+        'xNome': xNome,
+        'hashComprovante': hashComprovante,
+        'dhHashComprovante': dhHashComprovante,
+        'detPag': detPag,
+        'gPerecimento': gPerecimento,
+        'indQuitacao': indQuitacao,
+        'gConsumo': gConsumo,
+        'gItemNaoFornecido': gItemNaoFornecido,
+        'gCredPresOper': gCredPresOper,
+        'indAceitacao': indAceitacao,
+        'gImobilizacao': gImobilizacao,
+        'gConsumoComb': gConsumoComb,
+        'gCredito': gCredito,
+        'indDeferimento': indDeferimento,
+        'cMotivo': cMotivo,
+        'xMotivo': xMotivo,
+      };
+}
+
+/// Grupo `evento.dest` (classe `evento.dest` do Zeus). Valores informados pelo app.
+class EventoDest implements GrupoXml {
+  const EventoDest({
+    this.uf,
+    this.cnpj,
+    this.cpf,
+    this.idEstrangeiro,
+    this.ie,
+    required this.vNF,
+    required this.vICMS,
+    required this.vST,
+  });
+
+  /// `UF`
+  final String? uf;
+  /// `CNPJ`
+  final String? cnpj;
+  /// `CPF`
+  final String? cpf;
+  /// `idEstrangeiro`
+  final String? idEstrangeiro;
+  /// `IE`
+  final String? ie;
+  /// `vNF` (2 casas)
+  final double vNF;
+  /// `vICMS` (2 casas)
+  final double vICMS;
+  /// `vST` (2 casas)
+  final double vST;
+
+  @override
+  String get grupo => 'evento.dest';
+
+  @override
+  Map<String, Object?> get valores => {
+        'UF': uf,
+        'CNPJ': cnpj,
+        'CPF': cpf,
+        'idEstrangeiro': idEstrangeiro,
+        'IE': ie,
+        'vNF': vNF,
+        'vICMS': vICMS,
+        'vST': vST,
+      };
+}
+
+/// Grupo `evento.itensAverbados` (classe `evento.itensAverbados` do Zeus). Valores informados pelo app.
+class EventoItensAverbados implements GrupoXml {
+  const EventoItensAverbados({
+    this.dhEmbarque,
+    this.dhAverbacao,
+    this.nDue,
+    this.nItem,
+    this.nItemDue,
+    required this.qItem,
+    required this.motAlteracao,
+  });
+
+  /// `dhEmbarque`
+  final DateTime? dhEmbarque;
+  /// `dhAverbacao`
+  final DateTime? dhAverbacao;
+  /// `nDue`
+  final String? nDue;
+  /// `nItem`
+  final String? nItem;
+  /// `nItemDue`
+  final String? nItemDue;
+  /// `qItem`
+  final double qItem;
+  /// `motAlteracao`
+  final int motAlteracao;
+
+  @override
+  String get grupo => 'evento.itensAverbados';
+
+  @override
+  Map<String, Object?> get valores => {
+        'dhEmbarque': dhEmbarque,
+        'dhAverbacao': dhAverbacao,
+        'nDue': nDue,
+        'nItem': nItem,
+        'nItemDue': nItemDue,
+        'qItem': qItem,
+        'motAlteracao': motAlteracao,
+      };
+}
+
+/// Grupo `evento.detPagEvento` (classe `evento.detPagEvento` do Zeus). Valores informados pelo app.
+class EventoDetPagEvento implements GrupoXml {
+  const EventoDetPagEvento({
+    this.indPag,
+    required this.tPag,
+    this.xPag,
+    required this.vPag,
+    this.dPag,
+    this.cnpjPag,
+    this.ufPag,
+    this.cnpjif,
+    this.tBand,
+    this.cAut,
+    this.cnpjReceb,
+    this.ufReceb,
+  });
+
+  /// `indPag`
+  final String? indPag;
+  /// `tPag`
+  final String tPag;
+  /// `xPag`
+  final String? xPag;
+  /// `vPag` (2 casas)
+  final double vPag;
+  /// `dPag`
+  final String? dPag;
+  /// `CNPJPag`
+  final String? cnpjPag;
+  /// `UFPag`
+  final String? ufPag;
+  /// `CNPJIF`
+  final String? cnpjif;
+  /// `tBand`
+  final String? tBand;
+  /// `cAut`
+  final String? cAut;
+  /// `CNPJReceb`
+  final String? cnpjReceb;
+  /// `UFReceb`
+  final String? ufReceb;
+
+  @override
+  String get grupo => 'evento.detPagEvento';
+
+  @override
+  Map<String, Object?> get valores => {
+        'indPag': indPag,
+        'tPag': tPag,
+        'xPag': xPag,
+        'vPag': vPag,
+        'dPag': dPag,
+        'CNPJPag': cnpjPag,
+        'UFPag': ufPag,
+        'CNPJIF': cnpjif,
+        'tBand': tBand,
+        'cAut': cAut,
+        'CNPJReceb': cnpjReceb,
+        'UFReceb': ufReceb,
+      };
+}
+
+/// Grupo `evento.gPerecimento` (classe `evento.gPerecimento` do Zeus). Valores informados pelo app.
+class EventoGPerecimento implements GrupoXml {
+  const EventoGPerecimento({
+    required this.nItem,
+    required this.vIBS,
+    required this.vCBS,
+    this.gControleEstoque,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vIBS` (2 casas)
+  final double vIBS;
+  /// `vCBS` (2 casas)
+  final double vCBS;
+  /// `gControleEstoque`
+  final EventoGControleEstoque? gControleEstoque;
+
+  @override
+  String get grupo => 'evento.gPerecimento';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+        'gControleEstoque': gControleEstoque,
+      };
+}
+
+/// Grupo `evento.gControleEstoque` (classe `evento.gControleEstoque` do Zeus). Valores informados pelo app.
+class EventoGControleEstoque implements GrupoXml {
+  const EventoGControleEstoque({
+    required this.qPerecimento,
+    this.uPerecimento,
+    this.vIBS,
+    this.vCBS,
+  });
+
+  /// `qPerecimento` (4 casas)
+  final double qPerecimento;
+  /// `uPerecimento`
+  final String? uPerecimento;
+  /// `vIBS` (2 casas)
+  final double? vIBS;
+  /// `vCBS` (2 casas)
+  final double? vCBS;
+
+  @override
+  String get grupo => 'evento.gControleEstoque';
+
+  @override
+  Map<String, Object?> get valores => {
+        'qPerecimento': qPerecimento,
+        'uPerecimento': uPerecimento,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+      };
+}
+
+/// Grupo `evento.gConsumo` (classe `evento.gConsumo` do Zeus). Valores informados pelo app.
+class EventoGConsumo implements GrupoXml {
+  const EventoGConsumo({
+    required this.nItem,
+    required this.vIBS,
+    required this.vCBS,
+    this.gControleEstoque,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vIBS` (2 casas)
+  final double vIBS;
+  /// `vCBS` (2 casas)
+  final double vCBS;
+  /// `gControleEstoque`
+  final EventoGControleEstoqueConsumo? gControleEstoque;
+
+  @override
+  String get grupo => 'evento.gConsumo';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+        'gControleEstoque': gControleEstoque,
+      };
+}
+
+/// Grupo `evento.gControleEstoqueConsumo` (classe `evento.gControleEstoqueConsumo` do Zeus). Valores informados pelo app.
+class EventoGControleEstoqueConsumo implements GrupoXml {
+  const EventoGControleEstoqueConsumo({
+    required this.qtde,
+    this.unidade,
+  });
+
+  /// `qtde` (4 casas)
+  final double qtde;
+  /// `unidade`
+  final String? unidade;
+
+  @override
+  String get grupo => 'evento.gControleEstoqueConsumo';
+
+  @override
+  Map<String, Object?> get valores => {
+        'qtde': qtde,
+        'unidade': unidade,
+      };
+}
+
+/// Grupo `evento.gItemNaoFornecido` (classe `evento.gItemNaoFornecido` do Zeus). Valores informados pelo app.
+class EventoGItemNaoFornecido implements GrupoXml {
+  const EventoGItemNaoFornecido({
+    required this.nItem,
+    required this.vIBS,
+    required this.vCBS,
+    this.gControleEstoque,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vIBS` (2 casas)
+  final double vIBS;
+  /// `vCBS` (2 casas)
+  final double vCBS;
+  /// `gControleEstoque`
+  final EventoGControleEstoqueItemNaoFornecido? gControleEstoque;
+
+  @override
+  String get grupo => 'evento.gItemNaoFornecido';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+        'gControleEstoque': gControleEstoque,
+      };
+}
+
+/// Grupo `evento.gControleEstoqueItemNaoFornecido` (classe `evento.gControleEstoqueItemNaoFornecido` do Zeus). Valores informados pelo app.
+class EventoGControleEstoqueItemNaoFornecido implements GrupoXml {
+  const EventoGControleEstoqueItemNaoFornecido({
+    required this.qNaoFornecida,
+    this.uNaoFornecida,
+  });
+
+  /// `qNaoFornecida` (4 casas)
+  final double qNaoFornecida;
+  /// `uNaoFornecida`
+  final String? uNaoFornecida;
+
+  @override
+  String get grupo => 'evento.gControleEstoqueItemNaoFornecido';
+
+  @override
+  Map<String, Object?> get valores => {
+        'qNaoFornecida': qNaoFornecida,
+        'uNaoFornecida': uNaoFornecida,
+      };
+}
+
+/// Grupo `evento.gCredPresOper` (classe `evento.gCredPresOper` do Zeus). Valores informados pelo app.
+class EventoGCredPresOper implements GrupoXml {
+  const EventoGCredPresOper({
+    required this.nItem,
+    required this.vBCCredPres,
+    this.cCredPres,
+    this.gIBSCredPres,
+    this.gCBSCredPres,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vBCCredPres` (2 casas)
+  final double vBCCredPres;
+  /// `cCredPres`
+  final String? cCredPres;
+  /// `gIBSCredPres`
+  final EventoGCredPresTributo? gIBSCredPres;
+  /// `gCBSCredPres`
+  final EventoGCredPresTributo? gCBSCredPres;
+
+  @override
+  String get grupo => 'evento.gCredPresOper';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vBCCredPres': vBCCredPres,
+        'cCredPres': cCredPres,
+        'gIBSCredPres': gIBSCredPres,
+        'gCBSCredPres': gCBSCredPres,
+      };
+}
+
+/// Grupo `evento.gCredPresTributo` (classe `evento.gCredPresTributo` do Zeus). Valores informados pelo app.
+class EventoGCredPresTributo implements GrupoXml {
+  const EventoGCredPresTributo({
+    required this.pCredPres,
+    required this.vCredPres,
+  });
+
+  /// `pCredPres` (4 casas)
+  final double pCredPres;
+  /// `vCredPres` (2 casas)
+  final double vCredPres;
+
+  @override
+  String get grupo => 'evento.gCredPresTributo';
+
+  @override
+  Map<String, Object?> get valores => {
+        'pCredPres': pCredPres,
+        'vCredPres': vCredPres,
+      };
+}
+
+/// Grupo `evento.gImobilizacao` (classe `evento.gImobilizacao` do Zeus). Valores informados pelo app.
+class EventoGImobilizacao implements GrupoXml {
+  const EventoGImobilizacao({
+    required this.nItem,
+    required this.vIBS,
+    required this.vCBS,
+    this.gControleEstoque,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vIBS` (2 casas)
+  final double vIBS;
+  /// `vCBS` (2 casas)
+  final double vCBS;
+  /// `gControleEstoque`
+  final EventoGControleEstoqueImobilizacao? gControleEstoque;
+
+  @override
+  String get grupo => 'evento.gImobilizacao';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+        'gControleEstoque': gControleEstoque,
+      };
+}
+
+/// Grupo `evento.gControleEstoqueImobilizacao` (classe `evento.gControleEstoqueImobilizacao` do Zeus). Valores informados pelo app.
+class EventoGControleEstoqueImobilizacao implements GrupoXml {
+  const EventoGControleEstoqueImobilizacao({
+    required this.qImobilizado,
+    this.uImobilizado,
+  });
+
+  /// `qImobilizado` (4 casas)
+  final double qImobilizado;
+  /// `uImobilizado`
+  final String? uImobilizado;
+
+  @override
+  String get grupo => 'evento.gControleEstoqueImobilizacao';
+
+  @override
+  Map<String, Object?> get valores => {
+        'qImobilizado': qImobilizado,
+        'uImobilizado': uImobilizado,
+      };
+}
+
+/// Grupo `evento.gConsumoComb` (classe `evento.gConsumoComb` do Zeus). Valores informados pelo app.
+class EventoGConsumoComb implements GrupoXml {
+  const EventoGConsumoComb({
+    required this.nItem,
+    required this.vIBS,
+    required this.vCBS,
+    this.gControleEstoque,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vIBS` (2 casas)
+  final double vIBS;
+  /// `vCBS` (2 casas)
+  final double vCBS;
+  /// `gControleEstoque`
+  final EventoGControleEstoqueConsumoComb? gControleEstoque;
+
+  @override
+  String get grupo => 'evento.gConsumoComb';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vIBS': vIBS,
+        'vCBS': vCBS,
+        'gControleEstoque': gControleEstoque,
+      };
+}
+
+/// Grupo `evento.gControleEstoqueConsumoComb` (classe `evento.gControleEstoqueConsumoComb` do Zeus). Valores informados pelo app.
+class EventoGControleEstoqueConsumoComb implements GrupoXml {
+  const EventoGControleEstoqueConsumoComb({
+    required this.qComb,
+    this.uComb,
+  });
+
+  /// `qComb` (4 casas)
+  final double qComb;
+  /// `uComb`
+  final String? uComb;
+
+  @override
+  String get grupo => 'evento.gControleEstoqueConsumoComb';
+
+  @override
+  Map<String, Object?> get valores => {
+        'qComb': qComb,
+        'uComb': uComb,
+      };
+}
+
+/// Grupo `evento.gCredito` (classe `evento.gCredito` do Zeus). Valores informados pelo app.
+class EventoGCredito implements GrupoXml {
+  const EventoGCredito({
+    required this.nItem,
+    required this.vCredIBS,
+    required this.vCredCBS,
+  });
+
+  /// `nItem`
+  final int nItem;
+  /// `vCredIBS` (2 casas)
+  final double vCredIBS;
+  /// `vCredCBS` (2 casas)
+  final double vCredCBS;
+
+  @override
+  String get grupo => 'evento.gCredito';
+
+  @override
+  Map<String, Object?> get valores => {
+        'nItem': nItem,
+        'vCredIBS': vCredIBS,
+        'vCredCBS': vCredCBS,
+      };
+}
+

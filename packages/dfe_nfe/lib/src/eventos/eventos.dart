@@ -4,6 +4,8 @@ import 'package:xml/xml.dart';
 import '../autorizacao/autorizacao.dart';
 import '../enums.dart';
 import '../status/cons_stat_serv.dart' show nsNfe;
+import '../tributacao/classes.g.dart';
+import '../tributacao/grupo.dart';
 import '../util/formatacao.dart';
 
 String _semDeclaracao(String xml) => xml.replaceFirst(RegExp(r'^\s*<\?xml[^>]*\?>\s*'), '');
@@ -160,100 +162,15 @@ EventoNfe _montarEvento({
   return EventoNfe._(assinarXml(xml, id, certificado), id, chave, tipo, sequencia);
 }
 
-/// Destinatário do EPEC (grupo `dest` do detEvento) — `dest.cs` do Zeus.
-class DestinatarioEpec {
-  const DestinatarioEpec({
-    required this.uf,
-    this.cnpj,
-    this.cpf,
-    this.idEstrangeiro,
-    this.ie,
-    required this.vNF,
-    required this.vICMS,
-    required this.vST,
-  });
+/// Destinatário do EPEC (grupo `dest` do detEvento, classe `dest` do Zeus).
+typedef DestinatarioEpec = EventoDest;
 
-  final String uf;
-  final String? cnpj;
-  final String? cpf;
-  final String? idEstrangeiro;
-  final String? ie;
-  final double vNF;
-  final double vICMS;
-  final double vST;
-
-  String xml() => '<dest>${_t('UF', uf)}'
-      '${cnpj != null ? _t('CNPJ', cnpj!) : cpf != null ? _t('CPF', cpf!) : _t('idEstrangeiro', idEstrangeiro ?? '')}'
-      '${ie == null ? '' : _t('IE', ie!)}'
-      '${_t('vNF', formatarDecimal(vNF))}${_t('vICMS', formatarDecimal(vICMS))}${_t('vST', formatarDecimal(vST))}'
-      '</dest>';
-}
-
-/// Detalhe do evento (`detEvento`) com os valores informados pelo app.
-///
-/// Classe plana como o `detEvento` do Zeus: os campos preenchidos são emitidos
-/// na ordem de declaração do Zeus. Use com [montarEvento] para eventos que não
-/// têm montador próprio.
-class DetalheEvento {
-  const DetalheEvento({
-    required this.descEvento,
-    this.xCorrecao,
-    this.xCondUso,
-    this.cOrgaoAutor,
-    this.tpAutor,
-    this.verAplic,
-    this.dhEmi,
-    this.tpNF,
-    this.ie,
-    this.dest,
-    this.nProt,
-    this.xJust,
-    this.chNFeRef,
-    this.tpEventoAut,
-    this.nProtEvento,
-  });
-
-  final String descEvento;
-  final String? xCorrecao;
-  final String? xCondUso;
-  final int? cOrgaoAutor;
-
-  /// 1 empresa emitente, 2 destinatário, 3 empresa, 5 fisco, 6 RFB, 9 outros.
-  final int? tpAutor;
-  final String? verAplic;
-  final DateTime? dhEmi;
-  final int? tpNF;
-  final String? ie;
-  final DestinatarioEpec? dest;
-  final String? nProt;
-  final String? xJust;
-  final String? chNFeRef;
-  final String? tpEventoAut;
-  final String? nProtEvento;
-
-  String xml() {
-    final b = StringBuffer(_t('descEvento', descEvento));
-    void opc(String tag, Object? v) {
-      if (v != null) b.write(_t(tag, '$v'));
-    }
-
-    opc('xCorrecao', xCorrecao);
-    opc('xCondUso', xCondUso);
-    opc('cOrgaoAutor', cOrgaoAutor);
-    opc('tpAutor', tpAutor);
-    opc('verAplic', verAplic);
-    opc('dhEmi', dhEmi == null ? null : formatarDataHora(dhEmi!));
-    opc('tpNF', tpNF);
-    opc('IE', ie);
-    if (dest != null) b.write(dest!.xml());
-    opc('nProt', nProt);
-    opc('xJust', xJust);
-    opc('chNFeRef', chNFeRef);
-    opc('tpEventoAut', tpEventoAut);
-    opc('nProtEvento', nProtEvento);
-    return b.toString();
-  }
-}
+/// Detalhe do evento (`detEvento`), gerado da classe `detEvento` do Zeus:
+/// cobre todos os eventos (CC-e, cancelamento, EPEC, manifestação, ator
+/// interessado, entrega/insucesso, conciliação e eventos da reforma).
+/// Os valores são informados pelo app; o atributo `versao` é preenchido por
+/// [montarEvento].
+typedef DetalheEvento = EventoDetEvento;
 
 /// Monta e assina um evento genérico com o [detalhe] informado pelo app.
 ///
@@ -273,7 +190,7 @@ EventoNfe montarEvento({
 }) =>
     _montarEvento(
       tipo: tipo,
-      detalhe: detalhe.xml(),
+      detalhe: _conteudoDetalhe(detalhe),
       chave: chave,
       cnpj: cnpj,
       cpf: cpf,
@@ -302,8 +219,8 @@ EventoNfe montarEventoCancelamentoSubstituicao({
       tipo: '110112',
       detalhe: DetalheEvento(
         descEvento: 'Cancelamento por substituicao',
-        cOrgaoAutor: int.parse(chave.substring(0, 2)),
-        tpAutor: 1,
+        cOrgaoAutor: chave.substring(0, 2),
+        tpAutor: '1',
         verAplic: versaoAplicativo,
         nProt: protocolo,
         xJust: justificativa,
@@ -335,11 +252,11 @@ EventoNfe montarEventoEpec({
       tipo: '110140',
       detalhe: DetalheEvento(
         descEvento: 'EPEC',
-        cOrgaoAutor: int.parse(chave.substring(0, 2)),
-        tpAutor: 1,
+        cOrgaoAutor: chave.substring(0, 2),
+        tpAutor: '1',
         verAplic: versaoAplicativo,
         dhEmi: dataEmissao,
-        tpNF: tipoOperacao,
+        tpNF: '$tipoOperacao',
         ie: inscricaoEstadual,
         dest: destinatario,
       ),
@@ -525,4 +442,10 @@ String _proc(String raizXml, String pedido, String retorno) {
     ..add(XmlDocument.parse(_semDeclaracao(pedido)).rootElement.copy())
     ..add(XmlDocument.parse(_semDeclaracao(retorno)).rootElement.copy());
   return doc.toXmlString();
+}
+
+/// Conteúdo do `detEvento` (sem o elemento raiz, que leva `versao="1.00"`).
+String _conteudoDetalhe(DetalheEvento d) {
+  final x = serializarGrupoXml(d);
+  return x.substring(x.indexOf('>') + 1, x.length - '</detEvento>'.length);
 }

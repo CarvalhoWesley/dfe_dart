@@ -1,7 +1,7 @@
 import '../util/formatacao.dart';
 import 'grupos.g.dart';
 
-enum TipoCampo { dec, int, str, grp }
+enum TipoCampo { dec, int, str, grp, dh }
 
 /// Grupo do XML com especificação gerada a partir de uma classe do Zeus.
 abstract interface class GrupoXml {
@@ -43,7 +43,7 @@ class CampoGrupo {
 String serializarGrupo(String grupo, Map<String, Object?> valores, {String? tag}) {
   final campos = especificacaoGrupos[grupo];
   if (campos == null) throw ArgumentError('Grupo desconhecido: $grupo');
-  final raiz = tag ?? grupo;
+  final raiz = tag ?? grupo.split('.').last;
   final atributos = StringBuffer();
   final b = StringBuffer();
   for (final c in campos) {
@@ -68,7 +68,14 @@ String serializarGrupo(String grupo, Map<String, Object?> valores, {String? tag}
 }
 
 String formatarCampo(CampoGrupo c, Object v) => switch (c.tipo) {
-      TipoCampo.dec => formatarDecimal((v as num).toDouble(), c.casas ?? 2),
+      TipoCampo.dec => c.casas == null ? _decimalSemArredondar(v as num) : formatarDecimal((v as num).toDouble(), c.casas!),
       TipoCampo.int => '${(v as num).toInt()}',
+      TipoCampo.dh => formatarDataHora(v as DateTime),
       TipoCampo.str || TipoCampo.grp => '$v',
     };
+
+/// Decimal sem arredondamento (decimais do Zeus sem `Arredondar`).
+String _decimalSemArredondar(num v) {
+  final s = v.toDouble().toString();
+  return s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+}

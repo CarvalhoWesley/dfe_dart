@@ -43,6 +43,7 @@ class _Falso implements TransporteSoap {
 }
 
 void main() {
+  group("detEvento do Zeus", eventosDetalheZeus);
   test('cancelamento por substituição (110112): campos na ordem do Zeus', () {
     final e = montarEventoCancelamentoSubstituicao(
       chave: _nfce, protocolo: '135260000000001', justificativa: 'VENDA EMITIDA EM DUPLICIDADE OFFLINE',
@@ -117,5 +118,49 @@ void main() {
     expect(t.urls, everyElement('https://hom1.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'));
     expect(epec.retEvento!.registrado, isTrue);
     expect(epec.procEventoXml, isNotNull);
+  });
+}
+
+void eventosDetalheZeus() {
+  List<String> filhos(String xml) => XmlDocument.parse(xml)
+      .findAllElements('detEvento')
+      .single
+      .childElements
+      .map((e) => e.name.local)
+      .toList();
+
+  test('insucesso na entrega: campos na ordem do Zeus, GPS sem arredondar', () {
+    final e = montarEvento(
+      tipo: '110192',
+      detalhe: DetalheEvento(
+        descEvento: 'Insucesso na Entrega da NF-e', cOrgaoAutor: '35', verAplic: '1',
+        dhTentativaEntrega: DateTime(2026, 11, 18, 10), nTentativa: 1, tpMotivo: '1',
+        latGPS: -23.550520, longGPS: -46.633308,
+        hashTentativaEntrega: 'aGFzaA==', dhHashTentativaEntrega: DateTime(2026, 11, 18, 10),
+      ),
+      chave: _nfeEpec, cnpj: '12345678000195', ambiente: Ambiente.homologacao, certificado: _cert,
+    );
+    expect(filhos(e.xml), [
+      'descEvento', 'cOrgaoAutor', 'verAplic', 'dhTentativaEntrega', 'nTentativa', 'tpMotivo', 'latGPS',
+      'longGPS', 'hashTentativaEntrega', 'dhHashTentativaEntrega',
+    ]);
+    expect(XmlDocument.parse(e.xml).findAllElements('latGPS').single.innerText, '-23.55052');
+    expect(XmlDocument.parse(e.xml).findAllElements('detEvento').single.getAttribute('versao'), '1.00');
+  });
+
+  test('evento da reforma com grupos repetidos (gConsumo)', () {
+    final e = montarEvento(
+      tipo: '211120',
+      detalhe: const DetalheEvento(
+        descEvento: 'Informacao de efetivo pagamento integral para liberar credito presumido do adquirente',
+        cOrgaoAutor: '35', tpAutor: '1', verAplic: '1',
+        gConsumo: [
+          EventoGConsumo(nItem: 1, vIBS: 1, vCBS: 2),
+          EventoGConsumo(nItem: 2, vIBS: 3, vCBS: 4),
+        ],
+      ),
+      chave: _nfeEpec, cnpj: '12345678000195', ambiente: Ambiente.homologacao, certificado: _cert,
+    );
+    expect(filhos(e.xml), ['descEvento', 'cOrgaoAutor', 'tpAutor', 'verAplic', 'gConsumo', 'gConsumo']);
   });
 }

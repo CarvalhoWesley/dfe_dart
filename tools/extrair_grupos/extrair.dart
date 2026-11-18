@@ -48,17 +48,17 @@ const _raizesAninhadas = [
 ];
 
 /// Lê todas as classes públicas dos arquivos .cs de [pastas].
-Map<String, List<_Campo>> _todasClasses(List<String> pastas) {
+Map<String, List<_Campo>> _todasClasses(List<String> pastas, {int? casasPadrao = 2}) {
   final r = <String, List<_Campo>>{};
   for (final p in pastas) {
     final dir = Directory(p);
     if (!dir.existsSync()) continue;
     for (final f in dir.listSync().whereType<File>().where((f) => f.path.endsWith('.cs'))) {
       final src = f.readAsStringSync();
-      final ms = RegExp(r'public\s+(?:partial\s+)?class\s+(\w+)').allMatches(src).toList();
+      final ms = RegExp(r'public\s+(?:(?:partial|sealed)\s+)?class\s+(\w+)').allMatches(src).toList();
       for (var i = 0; i < ms.length; i++) {
         final corpo = src.substring(ms[i].end, i + 1 < ms.length ? ms[i + 1].start : src.length);
-        r.putIfAbsent(ms[i].group(1)!, () => _extrair(corpo, ms[i].group(1)!));
+        r.putIfAbsent(ms[i].group(1)!, () => _extrair(corpo, ms[i].group(1)!, casasPadrao: casasPadrao));
       }
     }
   }
@@ -81,7 +81,10 @@ Map<String, List<_Campo>> _todasClasses(List<String> pastas) {
 }
 
 /// Nome da classe no Dart: `gIBSUF` → `GIBSUF`.
-String _classeDart(String zeus) => zeus[0].toUpperCase() + zeus.substring(1);
+String _classeDart(String zeus) {
+  if (zeus.startsWith('evento.')) return 'Evento${_classeDart(zeus.substring(7))}';
+  return zeus[0].toUpperCase() + zeus.substring(1);
+}
 
 void main(List<String> args) {
   final zeus = args[0];
@@ -135,6 +138,17 @@ void main(List<String> args) {
   }
 
   _raizesAninhadas.forEach(visitar);
+
+  // Eventos: classes em namespace próprio (há homônimas, ex.: gCredPresOper),
+  // com chave "evento.<classe>" e classes Dart prefixadas com "Evento".
+  final eventos = _todasClasses(['$zeus/NFe.Classes/Servicos/Evento'], casasPadrao: null);
+  for (final MapEntry(key: k, value: campos) in eventos.entries) {
+    for (final c in campos) {
+      if (c.classe != null) c.classe = 'evento.${c.classe}';
+    }
+    todasZeus['evento.$k'] = campos;
+  }
+  visitar('evento.detEvento');
 
   for (final MapEntry(key: grupo, value: campos) in todos.entries) {
     b.writeln("  '$grupo': [");
@@ -234,6 +248,7 @@ void main(List<String> args) {
       var t = switch (c.tipo) {
         'dec' => 'double',
         'int' => 'int',
+        'dh' => 'DateTime',
         'grp' => _classeDart(c.classe!),
         _ => 'String',
       };
@@ -273,7 +288,7 @@ String _dart(String xml) {
   return xml[0].toLowerCase() + xml.substring(1);
 }
 
-List<_Campo> _extrair(String src, String grupo) {
+List<_Campo> _extrair(String src, String grupo, {int? casasPadrao = 2}) {
   // Remove comentários de documentação e mantém o ramo #else das diretivas.
   final limpo = src
       .replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '')
@@ -297,7 +312,9 @@ List<_Campo> _extrair(String src, String grupo) {
     }
     final attr = m.group(2) ?? '';
     // Nome do elemento XML pode diferir da propriedade (ElementName).
-    final elem = RegExp(r'ElementName\s*=\s*"(\w+)"').firstMatch(attr)?.group(1) ?? nome;
+    final elem = RegExp(r'ElementName\s*=\s*"(\w+)"').firstMatch(attr)?.group(1) ??
+        RegExp(r'^\s*"(\w+)"').firstMatch(attr)?.group(1) ??
+        nome;
     final ordem = int.tryParse(RegExp(r'Order\s*=\s*(\d+)').firstMatch(attr)?.group(1) ?? '') ?? (1000 + seq);
     seq++;
 
@@ -308,7 +325,9 @@ List<_Campo> _extrair(String src, String grupo) {
 
     final nulo = tipoCs.endsWith('?');
     final t = tipoCs.replaceAll('?', '');
-    final tipo = switch (t) {
+    // Datas: o Zeus serializa por uma propriedade "Proxy" string.
+    final data = nome.startsWith('Proxy') && corpo.contains('ParaDataHora');
+    final tipo = data ? 'dh' : switch (t) {
       'decimal' => 'dec',
       'int' || 'short' || 'long' => 'int',
       _ => 'str', // string e enums (o app informa o código)
@@ -319,7 +338,7 @@ List<_Campo> _extrair(String src, String grupo) {
         src.contains('${nome}Specified') ||
         src.contains('ShouldSerialize$nome()') ||
         (t == 'string' && src.contains('string.IsNullOrEmpty($nome)'));
-    campos.add(_Campo(elem, ordem, tipo, tipo == 'dec' ? (casas ?? 2) : null, opcional, tipoCs: tipoCs, atributo: atributo));
+    campos.add(_Campo(elem, ordem, tipo, tipo == 'dec' ? (casas ?? casasPadrao) : null, opcional, tipoCs: tipoCs, atributo: atributo));
   }
   campos.sort((a, b) => a.ordem.compareTo(b.ordem));
   return campos;

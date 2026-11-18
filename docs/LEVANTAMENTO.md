@@ -144,12 +144,12 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 | B1 | ✅ **(2026-11-18)** **Todos os grupos de ICMS**: 00, 02, 10, 15, 20, 30, 40/41/50, 51, 53, 60, 61, 70, 90, Part, ST, UFDest; Simples 101, 102/103/300/400, 201, 202/203, 500, 900 — com FCP, desoneração e ICMS efetivo | ✅ |
 | B2 | ✅ **(2026-11-18)** **Seleção do grupo pelo CRT + CST/CSOSN** a partir de um objeto plano (equivalente ao `ICMSGeral`, `PISGeral`, `COFINSGeral`, `IPIGeral`) | ✅ |
 | B3 | ✅ **(2026-11-18)** PIS/COFINS por quantidade e ST; IPI por unidade; II; ISSQN | ✅ |
-| B4 | IBS/CBS completo (gRed, gDif, gDevTrib, crédito presumido, monofásico, tributação regular, compra governamental), IS, `vNFTot` | ✅ |
+| B4 | ✔️ **Feito (2026-11-18):** `IBSCBS` completo (gRed, gDif, gDevTrib, gTribRegular, gTribCompraGov, monofásico, transferência/ajuste/estorno de crédito, crédito presumido), `IS`/`ISTot`, `IBSCBSTot` completo e `vNFTot` — classes geradas do Zeus pelo extrator | ✅ |
 | B5 | ✅ **(2026-11-18)** Tipos de emissão completos (`tpEmis` 2 FS, 3 SCAN, 4 EPEC, 5 FS-DA) | ✅ |
-| B6 | ⚠️ **Parcial (2026-11-18):** feitos cancelamento por substituição (110112), EPEC (110140, Ambiente Nacional), manifestação do destinatário (210200/210210/210220/210240) e evento genérico (`montarEvento` + `DetalheEvento`). **Pendentes:** ator interessado, comprovante/insucesso de entrega (o Zeus emite `latGPS`/`longGPS` antes de `dhEntrega` — conferir com o schema), conciliação financeira, eventos da reforma | ✅ |
+| B6 | ✔️ **Feito (2026-11-18):** `DetalheEvento` gerado do `detEvento` do Zeus (todos os campos e subgrupos: ator interessado, entrega/insucesso, conciliação, eventos da reforma), além dos montadores de cancelamento, CC-e, substituição, EPEC e manifestação. Ordem dos campos = Zeus (inclui `latGPS` antes de `dhEntrega`); não validado na SEFAZ | ✅ |
 | B7 | ✅ **(2026-11-18)** **Hash CSRT** (`infRespTec`) — validado com o exemplo da NT; a sobrecarga do Zeus que recebe a NF-e usa "NFe" no lugar da chave (erro do Zeus) | ✅ |
-| B8 | ⚠️ **Parcial (2026-11-18):** feitos `finNFe`/`tpNF`/`dhSaiEnt`, `NFref` (NF-e/NFC-e, CT-e, NF mod. 1, produtor rural, ECF), retirada/entrega, autXML, intermediador (`indIntermed`/`infIntermed`), cobrança (fatura/duplicatas), transporte (transportadora, veículo, volumes) e dest com IE/ISUF/IM/estrangeiro. **Pendentes:** exportação, compra, cana, agropecuário, `gCompraGov`, `gPagAntecipado`, reboque/vagão/balsa, lacres | ✅ |
-| B9 | Distribuição DF-e, consulta de cadastro, download | ✅ |
+| B8 | ✔️ **Feito (2026-11-18):** todos os grupos listados, inclusive exporta, compra, cana, agropecuário, `gCompraGov`, `gPagAntecipado`, `retTransp`, reboque/vagão/balsa e lacres. `vagao`/`balsa` seguem o schema (o Zeus os declara após `vol`) | ✅ |
+| B9 | ⏸️ Fora do escopo por decisão (2026-11-18): distribuição DF-e, consulta de cadastro, download | — |
 | B10 | **Feito (2026-11-18):** emissão anêmica no `dfe_nfe` e cálculos no `dfe_calculos`; regressão com XML idêntico ao anterior | — |
 
 ### 5.1 Paridade com o Zeus × extras do dfe_dart
