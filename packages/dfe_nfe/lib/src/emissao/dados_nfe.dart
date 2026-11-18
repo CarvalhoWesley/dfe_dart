@@ -1,10 +1,13 @@
 import '../enums.dart';
-import 'tributos.dart';
+import '../tributacao/imposto.dart';
 
-export 'tributos.dart';
+export '../tributacao/imposto.dart';
 
-/// Modelo de dados simplificado para emissão (venda a consumidor, Simples
-/// Nacional). Será substituído pelas classes geradas de `NFe.Classes` na Fase 1.
+/// Modelo de dados da NF-e/NFC-e para emissão.
+///
+/// **Anêmico, como o Zeus:** todos os valores (tributos e totais) são
+/// informados pelo app; a montagem só serializa. Para calcular tributos,
+/// totais, rateios e troco, use o pacote opcional `dfe_calculos`.
 
 class Endereco {
   const Endereco({
@@ -46,21 +49,28 @@ class Emitente {
   final String inscricaoEstadual;
   final Endereco endereco;
 
-  /// 1 = Simples Nacional, 2 = SN excesso, 3 = Normal, 4 = MEI.
-  /// O exemplo emite ICMS pelo CSOSN 102 (válido para CRT 1 e 4).
+  /// 1 = Simples Nacional, 2 = SN excesso de sublimite, 3 = Normal, 4 = MEI.
+  /// Define o grupo de ICMS (CST × CSOSN).
   final int crt;
 }
 
 class Destinatario {
-  const Destinatario({required this.nome, this.cpf, this.cnpj, this.endereco, this.email});
+  const Destinatario({required this.nome, this.cpf, this.cnpj, this.endereco, this.email, this.indIEDest = 9});
 
   final String? cpf;
   final String? cnpj;
   final String nome;
   final Endereco? endereco;
   final String? email;
+
+  /// 1 contribuinte, 2 isento, 9 não contribuinte.
+  final int indIEDest;
+
+  Destinatario copiarCom({String? nome}) => Destinatario(
+      nome: nome ?? this.nome, cpf: cpf, cnpj: cnpj, endereco: endereco, email: email, indIEDest: indIEDest);
 }
 
+/// Item da nota (grupos `prod` e `imposto`), com valores informados pelo app.
 class ItemNfe {
   const ItemNfe({
     required this.codigo,
@@ -70,31 +80,21 @@ class ItemNfe {
     required this.unidade,
     required this.quantidade,
     required this.valorUnitario,
+    required this.valorTotal,
+    required this.imposto,
     this.gtin = 'SEM GTIN',
     this.cest,
     this.codigoBeneficio,
-    this.icms = const Csosn102(),
-    this.pis = const PisCofins.naoTributado(),
-    this.cofins = const PisCofins.naoTributado(),
-    this.ipi,
+    this.unidadeTributavel,
+    this.quantidadeTributavel,
+    this.valorUnitarioTributavel,
+    this.gtinTributavel,
     this.desconto = 0,
     this.frete = 0,
     this.seguro = 0,
     this.outrasDespesas = 0,
-    this.valorTributos,
-    this.ibsCbs,
+    this.compoeTotal = true,
   });
-
-  /// IBS/CBS da reforma tributária (NT 2025.002); nulo = grupo não informado.
-  final IbsCbs? ibsCbs;
-
-  /// Base do IBS/CBS no período de transição: base do item menos ICMS, FCP,
-  /// PIS e COFINS.
-  double get baseIbsCbs {
-    final b = baseCalculo;
-    final t = icms.totais(b);
-    return arredondar(b - t.vICMS - t.vFCP - pis.valor(b) - cofins.valor(b));
-  }
 
   final String codigo;
   final String gtin;
@@ -105,34 +105,57 @@ class ItemNfe {
   final double quantidade;
   final double valorUnitario;
 
+  /// vProd (informado pelo app).
+  final double valorTotal;
+
   /// CEST (obrigatório para mercadorias sujeitas a ST).
   final String? cest;
 
-  /// Código de benefício fiscal (cBenef), exigido por algumas UFs.
+  /// Código de benefício fiscal (cBenef).
   final String? codigoBeneficio;
 
-  final Icms icms;
-  final PisCofins pis;
-  final PisCofins cofins;
-
-  /// Somente NF-e (modelo 55).
-  final Ipi? ipi;
+  /// Unidade/quantidade/valor tributáveis; se nulos, iguais aos comerciais.
+  final String? unidadeTributavel;
+  final double? quantidadeTributavel;
+  final double? valorUnitarioTributavel;
+  final String? gtinTributavel;
 
   final double desconto;
   final double frete;
   final double seguro;
   final double outrasDespesas;
 
-  /// Valor aproximado dos tributos (Lei 12.741/2012), vTotTrib do item.
-  final double? valorTributos;
+  /// indTot: o valor do item compõe o total da nota.
+  final bool compoeTotal;
 
-  double get valorTotal => arredondar(quantidade * valorUnitario);
+  final ImpostoItem imposto;
 
-  /// Base de cálculo: vProd − vDesc + vFrete + vSeg + vOutro.
-  double get baseCalculo => arredondar(valorTotal - desconto + frete + seguro + outrasDespesas);
+  ItemNfe copiarCom({String? descricao, ImpostoItem? imposto}) => ItemNfe(
+        codigo: codigo,
+        descricao: descricao ?? this.descricao,
+        ncm: ncm,
+        cfop: cfop,
+        unidade: unidade,
+        quantidade: quantidade,
+        valorUnitario: valorUnitario,
+        valorTotal: valorTotal,
+        imposto: imposto ?? this.imposto,
+        gtin: gtin,
+        cest: cest,
+        codigoBeneficio: codigoBeneficio,
+        unidadeTributavel: unidadeTributavel,
+        quantidadeTributavel: quantidadeTributavel,
+        valorUnitarioTributavel: valorUnitarioTributavel,
+        gtinTributavel: gtinTributavel,
+        desconto: desconto,
+        frete: frete,
+        seguro: seguro,
+        outrasDespesas: outrasDespesas,
+        compoeTotal: compoeTotal,
+      );
 }
 
-/// Dados de cartão (grupo `card`), exigido para crédito, débito e PIX.
+/// Dados de cartão (grupo `card`).
 class Cartao {
   const Cartao({this.integrado = false, this.cnpjCredenciadora, this.bandeira, this.autorizacao});
 
@@ -155,7 +178,7 @@ class Pagamento {
   final String tipo;
   final double valor;
 
-  /// Para 03/04/17 o grupo `card` é gerado mesmo sem dados (tpIntegra = 2).
+  /// Grupo `card` (o app informa; a SEFAZ exige para 03/04/17).
   final Cartao? cartao;
 
   /// xPag — obrigatório quando tPag = 99.
@@ -163,8 +186,6 @@ class Pagamento {
 
   /// indPag: false = à vista (0), true = a prazo (1).
   final bool aPrazo;
-
-  bool get exigeCartao => tipo == '03' || tipo == '04' || tipo == '17';
 }
 
 /// Responsável técnico (infRespTec) — exigido por algumas UFs.
@@ -190,20 +211,25 @@ class DadosNfe {
     required this.numero,
     required this.emitente,
     required this.itens,
+    required this.total,
     required this.pagamentos,
+    this.troco,
     this.destinatario,
     this.naturezaOperacao = 'VENDA',
     this.tipoEmissao = TipoEmissao.normal,
     this.justificativaContingencia,
     DateTime? dataEmissao,
-    DateTime? dataContingencia,
+    this.dataContingencia,
     this.informacoesComplementares,
     this.responsavelTecnico,
     this.codigoNumerico,
     this.versaoAplicativo = 'dfe_dart 0.1',
-  })  : dataEmissao = dataEmissao ?? DateTime.now(),
-        dataContingencia = dataContingencia ??
-            (tipoEmissao.contingencia ? (dataEmissao ?? DateTime.now()) : null);
+    this.modalidadeFrete = 9,
+    this.indicadorPresenca = 1,
+    this.consumidorFinal = true,
+    this.destinoOperacao = 1,
+    this.finalidade = 1,
+  }) : dataEmissao = dataEmissao ?? DateTime.now();
 
   final ModeloDocumento modelo;
   final Ambiente ambiente;
@@ -212,11 +238,21 @@ class DadosNfe {
   final Emitente emitente;
   final Destinatario? destinatario;
   final List<ItemNfe> itens;
+
+  /// Totais da nota (informados pelo app; `dfe_calculos` pode calculá-los).
+  final TotalNfe total;
   final List<Pagamento> pagamentos;
+
+  /// vTroco (informado pelo app).
+  final double? troco;
   final String naturezaOperacao;
   final TipoEmissao tipoEmissao;
+
+  /// xJust — obrigatório em contingência.
   final String? justificativaContingencia;
   final DateTime dataEmissao;
+
+  /// dhCont — obrigatório em contingência; se nulo, usa [dataEmissao].
   final DateTime? dataContingencia;
   final String? informacoesComplementares;
   final ResponsavelTecnico? responsavelTecnico;
@@ -225,82 +261,52 @@ class DadosNfe {
   final int? codigoNumerico;
   final String versaoAplicativo;
 
-  double get valorProdutos => arredondar(itens.fold<double>(0, (s, i) => s + i.valorTotal));
+  /// modFrete: 0 emitente, 1 destinatário, 2 terceiros, 3 próprio emitente, 4 próprio destinatário, 9 sem frete.
+  final int modalidadeFrete;
 
-  /// Totais da nota (grupo `ICMSTot`) calculados a partir dos itens.
-  TotaisNfe get totais => TotaisNfe.calcular(itens);
-}
+  /// indPres: 1 presencial, 2 internet, 3 teleatendimento, 4 entrega a domicílio, 5 presencial fora, 9 outros.
+  final int indicadorPresenca;
 
-/// Totais da nota (ICMSTot).
-class TotaisNfe {
-  TotaisNfe._(this.icms, this.vProd, this.vFrete, this.vSeg, this.vDesc, this.vOutro, this.vIPI,
-      this.vPIS, this.vCOFINS, this.vTotTrib, this.ibsCbs);
+  /// indFinal.
+  final bool consumidorFinal;
 
-  /// Soma do IBS/CBS dos itens; nulo se nenhum item informa o grupo.
-  final ValoresIbsCbs? ibsCbs;
+  /// idDest: 1 interna, 2 interestadual, 3 exterior.
+  final int destinoOperacao;
 
-  factory TotaisNfe.calcular(List<ItemNfe> itens) {
-    var icms = const TotaisIcms();
-    double vProd = 0, vFrete = 0, vSeg = 0, vDesc = 0, vOutro = 0, vIPI = 0, vPIS = 0, vCOFINS = 0, vTrib = 0;
-    ValoresIbsCbs? ibsCbs;
-    for (final i in itens) {
-      final b = i.baseCalculo;
-      if (i.ibsCbs != null) {
-        final base = i.baseIbsCbs;
-        final v = i.ibsCbs!.valores(base);
-        ibsCbs = (ibsCbs ?? const ValoresIbsCbs()) + v;
-      }
-      icms = icms + i.icms.totais(b);
-      vProd += i.valorTotal;
-      vFrete += i.frete;
-      vSeg += i.seguro;
-      vDesc += i.desconto;
-      vOutro += i.outrasDespesas;
-      vIPI += i.ipi?.valor(b) ?? 0;
-      vPIS += i.pis.valor(b);
-      vCOFINS += i.cofins.valor(b);
-      vTrib += i.valorTributos ?? 0;
-    }
-    final r = arredondar;
-    return TotaisNfe._(
-      TotaisIcms(
-        vBC: r(icms.vBC),
-        vICMS: r(icms.vICMS),
-        vICMSDeson: r(icms.vICMSDeson),
-        vFCP: r(icms.vFCP),
-        vBCST: r(icms.vBCST),
-        vST: r(icms.vST),
-        vFCPST: r(icms.vFCPST),
-      ),
-      r(vProd), r(vFrete), r(vSeg), r(vDesc), r(vOutro), r(vIPI), r(vPIS), r(vCOFINS), r(vTrib),
-      ibsCbs,
-    );
-  }
+  /// finNFe: 1 normal, 2 complementar, 3 ajuste, 4 devolução.
+  final int finalidade;
 
-  final TotaisIcms icms;
-  final double vProd;
-  final double vFrete;
-  final double vSeg;
-  final double vDesc;
-  final double vOutro;
-  final double vIPI;
-  final double vPIS;
-  final double vCOFINS;
-  final double vTotTrib;
-
-  /// vNF = vProd − vDesc − vICMSDeson + vST + vFCPST + vFrete + vSeg + vOutro + vIPI.
-  double get vNF => arredondar(
-      vProd - vDesc - icms.vICMSDeson + icms.vST + icms.vFCPST + vFrete + vSeg + vOutro + vIPI);
-}
-
-/// Distribui um desconto (ou acréscimo) no total da venda entre os itens,
-/// proporcional ao valor de cada um; a diferença de arredondamento vai para o
-/// último item.
-List<double> ratear(double valor, List<ItemNfe> itens) {
-  final total = itens.fold<double>(0, (s, i) => s + i.valorTotal);
-  if (total == 0 || itens.isEmpty) return List.filled(itens.length, 0);
-  final partes = [for (final i in itens) arredondar(valor * i.valorTotal / total)];
-  final diferenca = arredondar(valor - partes.fold<double>(0, (s, p) => s + p));
-  partes[partes.length - 1] = arredondar(partes.last + diferenca);
-  return partes;
+  DadosNfe copiarCom({
+    List<ItemNfe>? itens,
+    Destinatario? destinatario,
+    TotalNfe? total,
+    List<Pagamento>? pagamentos,
+    double? troco,
+  }) =>
+      DadosNfe(
+        modelo: modelo,
+        ambiente: ambiente,
+        serie: serie,
+        numero: numero,
+        emitente: emitente,
+        itens: itens ?? this.itens,
+        total: total ?? this.total,
+        pagamentos: pagamentos ?? this.pagamentos,
+        troco: troco ?? this.troco,
+        destinatario: destinatario ?? this.destinatario,
+        naturezaOperacao: naturezaOperacao,
+        tipoEmissao: tipoEmissao,
+        justificativaContingencia: justificativaContingencia,
+        dataEmissao: dataEmissao,
+        dataContingencia: dataContingencia,
+        informacoesComplementares: informacoesComplementares,
+        responsavelTecnico: responsavelTecnico,
+        codigoNumerico: codigoNumerico,
+        versaoAplicativo: versaoAplicativo,
+        modalidadeFrete: modalidadeFrete,
+        indicadorPresenca: indicadorPresenca,
+        consumidorFinal: consumidorFinal,
+        destinoOperacao: destinoOperacao,
+        finalidade: finalidade,
+      );
 }

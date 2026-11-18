@@ -50,13 +50,31 @@ void main(List<String> args) {
     ..writeln('/// decimais e obrigatoriedade), extraída das classes do Zeus.')
     ..writeln('const especificacaoGrupos = <String, List<CampoGrupo>>{');
 
+  final todos = <String, List<_Campo>>{};
   for (final MapEntry(key: arquivo, value: grupo) in _classes.entries) {
     final f = File('$base/$arquivo');
     if (!f.existsSync()) {
       stderr.writeln('ausente: $arquivo');
       continue;
     }
-    final campos = _extrair(f.readAsStringSync(), grupo);
+    todos[grupo] = _extrair(f.readAsStringSync(), grupo);
+  }
+  // Totais da nota.
+  final baseTotal = '$zeus/NFe.Classes/Informacoes/Total';
+  for (final MapEntry(key: arquivo, value: grupo)
+      in const {'ICMSTot.cs': 'ICMSTot', 'ISSQNtot.cs': 'ISSQNtot', 'retTrib.cs': 'retTrib'}.entries) {
+    todos[grupo] = _extrair(File('$baseTotal/$arquivo').readAsStringSync(), grupo);
+  }
+  // Grupo IPI (envolve IPITrib/IPINT): definido conforme IPI.cs do Zeus.
+  todos['IPI'] = [
+    _Campo('clEnq', 1, 'str', null, true),
+    _Campo('CNPJProd', 2, 'str', null, true),
+    _Campo('cSelo', 3, 'str', null, true),
+    _Campo('qSelo', 4, 'int', null, true),
+    _Campo('cEnq', 5, 'str', null, false),
+  ];
+
+  for (final MapEntry(key: grupo, value: campos) in todos.entries) {
     b.writeln("  '$grupo': [");
     for (final c in campos) {
       b.writeln("    CampoGrupo('${c.nome}', TipoCampo.${c.tipo}${c.casas == null ? '' : ', casas: ${c.casas}'}"
@@ -67,6 +85,83 @@ void main(List<String> args) {
   }
   b.writeln('};');
   File(saida).writeAsStringSync(b.toString());
+
+  // Classes tipadas (equivalentes a ICMSGeral, PISGeral... do Zeus).
+  final classes = StringBuffer()
+    ..writeln('// GERADO por tools/extrair_grupos a partir do ZeusFiscal. NÃO EDITE À MÃO.')
+    ..writeln('// ignore_for_file: lines_longer_than_80_chars')
+    ..writeln();
+  void classe(String nome, String doc, List<String> grupos, {List<String> ignorar = const []}) {
+    final campos = <String, _Campo>{};
+    for (final g in grupos) {
+      for (final c in todos[g]!) {
+        if (!ignorar.contains(c.nome)) campos.putIfAbsent(c.nome, () => c);
+      }
+    }
+    classes
+      ..writeln('/// $doc')
+      ..writeln('///')
+      ..writeln('/// Campos dos grupos ${grupos.join(', ')} do Zeus. Os valores são')
+      ..writeln('/// **informados pelo app** (nada é calculado na emissão).')
+      ..writeln('class $nome {')
+      ..writeln('  const $nome({');
+    for (final c in campos.values) {
+      classes.writeln('    this.${_dart(c.nome)},');
+    }
+    classes
+      ..writeln('  });')
+      ..writeln();
+    for (final c in campos.values) {
+      final t = switch (c.tipo) { 'dec' => 'double', 'int' => 'int', _ => 'String' };
+      classes
+        ..writeln('  /// `${c.nome}`${c.casas == null ? '' : ' (${c.casas} casas)'}')
+        ..writeln('  final $t? ${_dart(c.nome)};');
+    }
+    classes
+      ..writeln()
+      ..writeln('  /// Valores indexados pelo nome do campo no XML.')
+      ..writeln('  Map<String, Object?> get valores => {');
+    for (final c in campos.values) {
+      classes.writeln("        '${c.nome}': ${_dart(c.nome)},");
+    }
+    classes
+      ..writeln('      };')
+      ..writeln('}')
+      ..writeln();
+  }
+
+  classe('IcmsGeral', 'ICMS do item (equivalente ao `ICMSGeral` do Zeus).', [
+    'ICMS00', 'ICMS02', 'ICMS10', 'ICMS15', 'ICMS20', 'ICMS30', 'ICMS40', 'ICMS51', 'ICMS53',
+    'ICMS60', 'ICMS61', 'ICMS70', 'ICMS90', 'ICMSPart', 'ICMSST', 'ICMSSN101', 'ICMSSN102',
+    'ICMSSN201', 'ICMSSN202', 'ICMSSN500', 'ICMSSN900',
+  ]);
+  classe('PisGeral', 'PIS do item (equivalente ao `PISGeral` do Zeus).',
+      ['PISAliq', 'PISQtde', 'PISNT', 'PISOutr']);
+  classe('CofinsGeral', 'COFINS do item (equivalente ao `COFINSGeral` do Zeus).',
+      ['COFINSAliq', 'COFINSQtde', 'COFINSNT', 'COFINSOutr']);
+  classe('IpiGeral', 'IPI do item (equivalente ao `IPIGeral` do Zeus). Somente NF-e.',
+      ['IPI', 'IPITrib', 'IPINT']);
+  classe('PisSt', 'PIS-ST do item (grupo `PISST`).', ['PISST']);
+  classe('CofinsSt', 'COFINS-ST do item (grupo `COFINSST`).', ['COFINSST']);
+  classe('ImpostoImportacao', 'Imposto de Importação do item (grupo `II`).', ['II']);
+  classe('IcmsUfDest', 'ICMS interestadual para consumidor final (grupo `ICMSUFDest`, DIFAL).',
+      ['ICMSUFDest']);
+  classe('Issqn', 'ISSQN do item (grupo `ISSQN`).', ['ISSQN']);
+
+  classe('IcmsTot', 'Totais de ICMS da nota (grupo `ICMSTot`), informados pelo app.', ['ICMSTot']);
+  classe('IssqnTot', 'Totais de ISSQN da nota (grupo `ISSQNtot`).', ['ISSQNtot']);
+  classe('RetTrib', 'Retenção de tributos (grupo `retTrib`).', ['retTrib']);
+
+  final arqClasses = saida.replaceFirst('grupos.g.dart', 'classes.g.dart');
+  File(arqClasses).writeAsStringSync(classes.toString());
+  stdout.writeln('classes: $arqClasses');
+}
+
+/// Nome do campo no Dart: siglas todas em maiúsculas viram minúsculas
+/// (CST → cst, UFST → ufst); os demais mantêm o nome do XML (vICMS, pFCP...).
+String _dart(String xml) {
+  if (xml == xml.toUpperCase()) return xml.toLowerCase();
+  return xml[0].toLowerCase() + xml.substring(1);
 }
 
 List<_Campo> _extrair(String src, String grupo) {

@@ -11,7 +11,8 @@ Biblioteca Dart/Flutter para emissão de documentos fiscais eletrônicos brasile
 | Pacote | Conteúdo |
 |---|---|
 | [`dfe_core`](packages/dfe_core) | Certificado A1 (PKCS#12), C14N, assinatura XMLDSig (idêntica ao `SignedXml` do .NET), cliente SOAP 1.2 |
-| [`dfe_nfe`](packages/dfe_nfe) | NF-e/NFC-e 4.00: montagem do XML, chave de acesso, QR Code v2/v3, autorização, `nfeProc`, URLs |
+| [`dfe_nfe`](packages/dfe_nfe) | NF-e/NFC-e 4.00: montagem do XML (anêmica, valores informados pelo app — paridade com o Zeus), todos os grupos de ICMS/PIS/COFINS/IPI/II/ISSQN gerados do Zeus, chave de acesso, QR Code v2/v3, autorização, eventos, `nfeProc`, URLs |
+| [`dfe_calculos`](packages/dfe_calculos) | **Opcional — não existe no Zeus.** Cálculo de tributos (regras de ICMS/ST/PIS/COFINS/IPI/IBS-CBS), totais, rateio, troco, textos de homologação e validações de negócio |
 | [`dfe_transporte_ffi`](packages/dfe_transporte_ffi) | TLS mútuo nativo via FFI: WinHTTP/SChannel (Windows) e libcurl (Linux) |
 | [`dfe_danfe`](packages/dfe_danfe) | DANFE NFC-e (texto, PDF, ESC/POS) e DANFE NF-e A4 (PDF multipágina) a partir do `procNFe` — a impressão fica com o app |
 | [`dfe_flutter`](packages/dfe_flutter) | Plugin Flutter: transporte nativo da plataforma, imagem PNG do DANFE e app de exemplo |

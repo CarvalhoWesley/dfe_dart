@@ -141,16 +141,16 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 
 | # | Item (biblioteca) | Zeus tem? |
 |---|---|---|
-| B1 | **Todos os grupos de ICMS**: 00, 02, 10, 15, 20, 30, 40/41/50, 51, 53, 60, 61, 70, 90, Part, ST, UFDest; Simples 101, 102/103/300/400, 201, 202/203, 500, 900 — com FCP, desoneração e ICMS efetivo | ✅ |
-| B2 | **Seleção do grupo pelo CRT + CST/CSOSN** a partir de um objeto plano (equivalente ao `ICMSGeral`, `PISGeral`, `COFINSGeral`, `IPIGeral`) | ✅ |
-| B3 | PIS/COFINS por quantidade e ST; IPI por unidade; II; ISSQN | ✅ |
+| B1 | ✅ **(2026-11-18)** **Todos os grupos de ICMS**: 00, 02, 10, 15, 20, 30, 40/41/50, 51, 53, 60, 61, 70, 90, Part, ST, UFDest; Simples 101, 102/103/300/400, 201, 202/203, 500, 900 — com FCP, desoneração e ICMS efetivo | ✅ |
+| B2 | ✅ **(2026-11-18)** **Seleção do grupo pelo CRT + CST/CSOSN** a partir de um objeto plano (equivalente ao `ICMSGeral`, `PISGeral`, `COFINSGeral`, `IPIGeral`) | ✅ |
+| B3 | ✅ **(2026-11-18)** PIS/COFINS por quantidade e ST; IPI por unidade; II; ISSQN | ✅ |
 | B4 | IBS/CBS completo (gRed, gDif, gDevTrib, crédito presumido, monofásico, tributação regular, compra governamental), IS, `vNFTot` | ✅ |
 | B5 | Tipos de emissão completos (`tpEmis` 2 FS, 3 SCAN, 4 EPEC, 5 FS-DA) | ✅ |
 | B6 | Eventos: **cancelamento por substituição (110112)**, **EPEC (110140)**, ator interessado, comprovante/insucesso de entrega, conciliação financeira, manifestação do destinatário, eventos da reforma | ✅ |
 | B7 | **Hash CSRT** (`infRespTec`) | ✅ |
 | B8 | NF-e: `finNFe` 2/3/4 com `NFref`, entrega/retirada, autXML, intermediador, exportação, compra, cana | ✅ |
 | B9 | Distribuição DF-e, consulta de cadastro, download | ✅ |
-| B10 | **Decidido (2026-11-17) — opção 2: paridade na emissão + extras opcionais.** Ver seção 5.1 | — |
+| B10 | **Feito (2026-11-18):** emissão anêmica no `dfe_nfe` e cálculos no `dfe_calculos`; regressão com XML idêntico ao anterior | — |
 
 ### 5.1 Paridade com o Zeus × extras do dfe_dart
 

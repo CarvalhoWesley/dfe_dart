@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dfe_core/dfe_core.dart';
+import 'package:dfe_calculos/dfe_calculos.dart';
 import 'package:dfe_nfe/dfe_nfe.dart';
 import 'package:test/test.dart';
 import 'package:xml/xml.dart';
@@ -18,7 +19,16 @@ const _end = Endereco(
   cep: '01001000',
 );
 
-DadosNfe _dados(ModeloDocumento m, {TipoEmissao tp = TipoEmissao.normal}) => DadosNfe(
+DadosNfe _dados(ModeloDocumento m, {TipoEmissao tp = TipoEmissao.normal}) {
+  final itens = [
+    calcularItem(
+      codigo: '1', descricao: 'PRODUTO', ncm: '21069090', cfop: '5102',
+      unidade: 'UN', quantidade: 2, valorUnitario: 5.5,
+    ),
+  ];
+  final total = calcularTotais(itens);
+  const pag = [Pagamento(tipo: '01', valor: 20)];
+  return aplicarTextosHomologacao(DadosNfe(
       modelo: m,
       ambiente: Ambiente.homologacao,
       serie: 1,
@@ -36,14 +46,12 @@ DadosNfe _dados(ModeloDocumento m, {TipoEmissao tp = TipoEmissao.normal}) => Dad
       destinatario: m == ModeloDocumento.nfe
           ? const Destinatario(nome: 'CLIENTE', cpf: '12345678909', endereco: _end)
           : null,
-      itens: const [
-        ItemNfe(
-          codigo: '1', descricao: 'PRODUTO', ncm: '21069090', cfop: '5102',
-          unidade: 'UN', quantidade: 2, valorUnitario: 5.5,
-        ),
-      ],
-      pagamentos: const [Pagamento(tipo: '01', valor: 20)],
-    );
+      itens: itens,
+      total: total,
+      pagamentos: pag,
+      troco: calcularTroco(pag, total.vNF),
+    ));
+}
 
 void main() {
   test('chave de acesso e DV', () {

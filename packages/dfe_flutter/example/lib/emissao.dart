@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dfe_calculos/dfe_calculos.dart';
 import 'package:dfe_core/dfe_core.dart';
 import 'package:dfe_flutter/dfe_flutter.dart';
 import 'package:dfe_nfe/dfe_nfe.dart';
@@ -49,9 +50,14 @@ class EmissaoTeste {
         cep: cfg.cep,
       );
 
+  /// Monta a nota do cenário de teste. O app calcula tributos, totais, troco e
+  /// textos de homologação com o dfe_calculos (opcional) e o dfe_nfe só emite.
   DadosNfe _dados(ModeloDocumento modelo, TipoEmissao tp) {
     final nfe = modelo == ModeloDocumento.nfe;
-    return DadosNfe(
+    final itens = _itens();
+    final total = calcularTotais(itens);
+    final pagamentos = comCartaoPadrao(_pagamentos(total.vNF));
+    final dados = DadosNfe(
       modelo: modelo,
       ambiente: Ambiente.homologacao,
       serie: nfe ? cfg.serieNfe : cfg.serieNfce,
@@ -66,12 +72,14 @@ class EmissaoTeste {
         crt: cfg.crt,
         endereco: _endereco,
       ),
-      // CPF de teste válido; em homologação o nome é trocado pelo texto padrão.
+      // CPF de teste válido.
       destinatario: nfe
           ? Destinatario(nome: 'CONSUMIDOR TESTE', cpf: '11144477735', endereco: _endereco)
           : null,
-      itens: _itens(),
-      pagamentos: _pagamentos(_itens()),
+      itens: itens,
+      total: total,
+      pagamentos: pagamentos,
+      troco: calcularTroco(pagamentos, total.vNF),
       informacoesComplementares: 'Documento emitido pelo app de testes do dfe_dart '
           '(tributação: ${cfg.tributacao}, pagamento: ${cfg.pagamento})',
       responsavelTecnico: cfg.respTecCnpj.isEmpty
@@ -83,19 +91,24 @@ class EmissaoTeste {
               fone: cfg.respTecFone,
             ),
     );
+    final erros = validarNfe(dados);
+    if (erros.isNotEmpty) throw StateError(erros.join('; '));
+    // Em homologação a SEFAZ exige textos fixos no 1º item e no destinatário.
+    return aplicarTextosHomologacao(dados);
   }
 
   /// Dois itens com o cenário de tributação escolhido e o desconto rateado.
   List<ItemNfe> _itens() {
-    final (Icms icms, PisCofins pis, PisCofins cofins) = switch (cfg.tributacao) {
-      'sn101' => (const Csosn101(aliquotaCredito: 2.56), const PisCofins.outros(cst: '49'),
-          const PisCofins.outros(cst: '49')),
-      'normal00' => (const Icms00(aliquota: 18), const PisCofins.aliquota(aliquota: 1.65),
-          const PisCofins.aliquota(aliquota: 7.6)),
-      'normal40' => (const Icms40(), const PisCofins.naoTributado(), const PisCofins.naoTributado()),
-      _ => (const Csosn102(), const PisCofins.naoTributado(), const PisCofins.naoTributado()),
+    final (RegraIcms icms, RegraPisCofins pis, RegraPisCofins cofins) = switch (cfg.tributacao) {
+      'sn101' => (const RegraCsosn101(aliquotaCredito: 2.56), const RegraPisCofins.outros(cst: '49'),
+          const RegraPisCofins.outros(cst: '49')),
+      'normal00' => (const RegraIcms00(aliquota: 18), const RegraPisCofins.aliquota(aliquota: 1.65),
+          const RegraPisCofins.aliquota(aliquota: 7.6)),
+      'normal40' => (const RegraIcms40(), const RegraPisCofins.naoTributado(), const RegraPisCofins.naoTributado()),
+      _ => (const RegraCsosn102(), const RegraPisCofins.naoTributado(), const RegraPisCofins.naoTributado()),
     };
-    ItemNfe item(String cod, String desc, double qtd, double unit, double desconto) => ItemNfe(
+    final descontos = ratear(cfg.desconto, [10, 25]);
+    ItemNfe item(String cod, String desc, double qtd, double unit, double desconto) => calcularItem(
           codigo: cod,
           descricao: desc,
           ncm: '21069090',
@@ -108,18 +121,15 @@ class EmissaoTeste {
           cofins: cofins,
           desconto: desconto,
           valorTributos: arredondar(qtd * unit * 0.1345), // estimativa IBPT para teste
-          ibsCbs: cfg.ibsCbs ? IbsCbs(cst: cfg.ibsCbsCst, classificacao: cfg.cClassTrib) : null,
+          ibsCbs: cfg.ibsCbs ? RegraIbsCbs(cst: cfg.ibsCbsCst, classificacao: cfg.cClassTrib) : null,
         );
-    final base = [item('0001', 'PRODUTO DE TESTE A', 1, 10, 0), item('0002', 'PRODUTO DE TESTE B', 2, 12.5, 0)];
-    final descontos = ratear(cfg.desconto, base);
     return [
       item('0001', 'PRODUTO DE TESTE A', 1, 10, descontos[0]),
       item('0002', 'PRODUTO DE TESTE B', 2, 12.5, descontos[1]),
     ];
   }
 
-  List<Pagamento> _pagamentos(List<ItemNfe> itens) {
-    final total = TotaisNfe.calcular(itens).vNF;
+  List<Pagamento> _pagamentos(double total) {
     const cartao = Cartao(bandeira: '01', autorizacao: '123456');
     return switch (cfg.pagamento) {
       'credito' => [Pagamento(tipo: '03', valor: total, cartao: cartao)],

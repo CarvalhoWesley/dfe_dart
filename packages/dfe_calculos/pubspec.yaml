@@ -1,0 +1,18 @@
+name: dfe_calculos
+description: Ferramentas opcionais de cálculo de tributos e totais da NF-e/NFC-e (extra do dfe_dart — não existe no ZeusFiscal).
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  dfe_nfe:
+    path: ../dfe_nfe
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
+  dfe_core:
+    path: ../dfe_core
+  xml: ^6.5.0

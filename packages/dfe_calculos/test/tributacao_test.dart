@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dfe_core/dfe_core.dart';
+import 'package:dfe_calculos/dfe_calculos.dart';
 import 'package:dfe_nfe/dfe_nfe.dart';
 import 'package:test/test.dart';
 import 'package:xml/xml.dart';
@@ -14,24 +15,28 @@ const _end = Endereco(
 );
 
 ItemNfe _item({
-  Icms icms = const Csosn102(),
-  PisCofins pis = const PisCofins.naoTributado(),
-  PisCofins cofins = const PisCofins.naoTributado(),
-  Ipi? ipi,
+  RegraIcms icms = const RegraCsosn102(),
+  RegraPisCofins pis = const RegraPisCofins.naoTributado(),
+  RegraPisCofins cofins = const RegraPisCofins.naoTributado(),
+  RegraIpi? ipi,
   double qtd = 2,
   double unit = 50,
   double desconto = 0,
   double frete = 0,
   double? tributos,
 }) =>
-    ItemNfe(
+    calcularItem(
       codigo: '1', descricao: 'PRODUTO', ncm: '21069090', cfop: '5102', unidade: 'UN',
       quantidade: qtd, valorUnitario: unit, icms: icms, pis: pis, cofins: cofins, ipi: ipi,
       desconto: desconto, frete: frete, valorTributos: tributos,
     );
 
-XmlDocument _nota(List<ItemNfe> itens, {List<Pagamento>? pag, ModeloDocumento m = ModeloDocumento.nfe, int crt = 3}) {
-  final d = DadosNfe(
+XmlDocument _nota(List<ItemNfe> itens, {List<Pagamento>? pag, ModeloDocumento m = ModeloDocumento.nfe, int? crt}) {
+  // Sem CRT informado: Simples (1) se algum item usa CSOSN, senão regime normal (3).
+  crt ??= itens.any((i) => i.imposto.icms?.dados.csosn != null) ? 1 : 3;
+  final total = calcularTotais(itens);
+  final pagamentos = comCartaoPadrao(pag ?? [Pagamento(tipo: '01', valor: total.vNF)]);
+  final d = aplicarTextosHomologacao(DadosNfe(
     modelo: m,
     ambiente: Ambiente.homologacao,
     serie: 1,
@@ -43,8 +48,12 @@ XmlDocument _nota(List<ItemNfe> itens, {List<Pagamento>? pag, ModeloDocumento m 
         ? const Destinatario(nome: 'CLIENTE', cpf: '11144477735', endereco: _end)
         : null,
     itens: itens,
-    pagamentos: pag ?? [Pagamento(tipo: '01', valor: TotaisNfe.calcular(itens).vNF)],
-  );
+    total: total,
+    pagamentos: pagamentos,
+    troco: calcularTroco(pagamentos, total.vNF),
+  ));
+  final erros = validarNfe(d);
+  if (erros.isNotEmpty) throw ArgumentError(erros.join('; '));
   return XmlDocument.parse(EmissorNfe(_cert).gerar(d).xmlAssinado);
 }
 
@@ -56,7 +65,7 @@ String _tot(XmlDocument x, String campo) =>
 void main() {
   group('ICMS regime normal', () {
     test('CST 00: ordem dos campos, valores e totais', () {
-      final x = _nota([_item(icms: const Icms00(aliquota: 18))]);
+      final x = _nota([_item(icms: const RegraIcms00(aliquota: 18))]);
       expect(_filhos(x, 'ICMS00'), ['orig', 'CST', 'modBC', 'vBC', 'pICMS', 'vICMS']);
       expect(x.findAllElements('vICMS').first.innerText, '18.00');
       expect(_tot(x, 'vBC'), '100.00');
@@ -64,7 +73,7 @@ void main() {
     });
 
     test('CST 10 com MVA: ST = base×(1+MVA)×alíq. ST − ICMS próprio, soma no vNF', () {
-      final x = _nota([_item(icms: const Icms10(aliquota: 18, aliquotaSt: 18, mva: 40))]);
+      final x = _nota([_item(icms: const RegraIcms10(aliquota: 18, aliquotaSt: 18, mva: 40))]);
       expect(_filhos(x, 'ICMS10'), [
         'orig', 'CST', 'modBC', 'vBC', 'pICMS', 'vICMS', 'modBCST', 'pMVAST', 'vBCST', 'pICMSST', 'vICMSST'
       ]);
@@ -75,7 +84,7 @@ void main() {
     });
 
     test('CST 20 reduz a base', () {
-      final x = _nota([_item(icms: const Icms20(aliquota: 18, reducao: 33.33))]);
+      final x = _nota([_item(icms: const RegraIcms20(aliquota: 18, reducao: 33.33))]);
       expect(_filhos(x, 'ICMS20'), ['orig', 'CST', 'modBC', 'pRedBC', 'vBC', 'pICMS', 'vICMS']);
       expect(_tot(x, 'vBC'), '66.67');
       expect(_tot(x, 'vICMS'), '12.00');
@@ -83,8 +92,8 @@ void main() {
 
     test('CST 41 e 60 não somam ICMS', () {
       final x = _nota([
-        _item(icms: const Icms40(cst: '41')),
-        _item(icms: const Icms60(baseStRetido: 80, aliquotaStRetido: 18, icmsStRetido: 14.4)),
+        _item(icms: const RegraIcms40(cst: '41')),
+        _item(icms: const RegraIcms60(baseStRetido: 80, aliquotaStRetido: 18, icmsStRetido: 14.4)),
       ]);
       expect(x.findAllElements('ICMS40').single.getElement('CST')!.innerText, '41');
       expect(_filhos(x, 'ICMS60'), ['orig', 'CST', 'vBCSTRet', 'pST', 'vICMSSTRet']);
@@ -95,13 +104,13 @@ void main() {
 
   group('Simples Nacional', () {
     test('CSOSN 101 com crédito', () {
-      final x = _nota([_item(icms: const Csosn101(aliquotaCredito: 2.56))], crt: 1);
+      final x = _nota([_item(icms: const RegraCsosn101(aliquotaCredito: 2.56))], crt: 1);
       expect(_filhos(x, 'ICMSSN101'), ['orig', 'CSOSN', 'pCredSN', 'vCredICMSSN']);
       expect(x.findAllElements('vCredICMSSN').single.innerText, '2.56');
     });
 
     test('CSOSN 201 desconta o ICMS próprio pela alíquota interna', () {
-      final x = _nota([_item(icms: const Csosn201(aliquotaSt: 18, aliquotaInterna: 18, mva: 40, aliquotaCredito: 1.25))],
+      final x = _nota([_item(icms: const RegraCsosn201(aliquotaSt: 18, aliquotaInterna: 18, mva: 40, aliquotaCredito: 1.25))],
           crt: 1);
       expect(_filhos(x, 'ICMSSN201'),
           ['orig', 'CSOSN', 'modBCST', 'pMVAST', 'vBCST', 'pICMSST', 'vICMSST', 'pCredSN', 'vCredICMSSN']);
@@ -111,9 +120,9 @@ void main() {
 
     test('CSOSN 202 usa o grupo ICMSSN202, 500 e 900', () {
       final x = _nota([
-        _item(icms: const Csosn201(csosn: '202', aliquotaSt: 18, aliquotaInterna: 18, mva: 40)),
-        _item(icms: const Csosn500()),
-        _item(icms: const Csosn900()),
+        _item(icms: const RegraCsosn201(csosn: '202', aliquotaSt: 18, aliquotaInterna: 18, mva: 40)),
+        _item(icms: const RegraCsosn500()),
+        _item(icms: const RegraCsosn900()),
       ], crt: 1);
       expect(x.findAllElements('ICMSSN202').single.getElement('CSOSN')!.innerText, '202');
       expect(_filhos(x, 'ICMSSN500'), ['orig', 'CSOSN']);
@@ -125,9 +134,9 @@ void main() {
     test('alíquota (CST 01) e totais', () {
       final x = _nota([
         _item(
-          pis: const PisCofins.aliquota(aliquota: 1.65),
-          cofins: const PisCofins.aliquota(aliquota: 7.6),
-          ipi: const Ipi.tributado(aliquota: 10),
+          pis: const RegraPisCofins.aliquota(aliquota: 1.65),
+          cofins: const RegraPisCofins.aliquota(aliquota: 7.6),
+          ipi: const RegraIpi.tributado(aliquota: 10),
         ),
       ]);
       expect(_filhos(x, 'PISAliq'), ['CST', 'vBC', 'pPIS', 'vPIS']);
@@ -142,13 +151,13 @@ void main() {
     });
 
     test('outros (CST 99) sem alíquota e IPI não tributado', () {
-      final x = _nota([_item(pis: const PisCofins.outros(), ipi: const Ipi.naoTributado())]);
+      final x = _nota([_item(pis: const RegraPisCofins.outros(), ipi: const RegraIpi.naoTributado())]);
       expect(_filhos(x, 'PISOutr'), ['CST', 'vBC', 'pPIS', 'vPIS']);
       expect(x.findAllElements('IPINT').single.getElement('CST')!.innerText, '53');
     });
 
     test('NFC-e não aceita IPI', () {
-      expect(() => _nota([_item(ipi: const Ipi.tributado(aliquota: 5))], m: ModeloDocumento.nfce),
+      expect(() => _nota([_item(ipi: const RegraIpi.tributado(aliquota: 5))], m: ModeloDocumento.nfce),
           throwsArgumentError);
     });
   });
@@ -156,8 +165,8 @@ void main() {
   group('Valores do item e totais', () {
     test('desconto e frete entram na base e no vNF; vTotTrib somado', () {
       final x = _nota([
-        _item(icms: const Icms00(aliquota: 18), desconto: 10, frete: 5, tributos: 12.34),
-        _item(icms: const Icms00(aliquota: 18), tributos: 1),
+        _item(icms: const RegraIcms00(aliquota: 18), desconto: 10, frete: 5, tributos: 12.34),
+        _item(icms: const RegraIcms00(aliquota: 18), tributos: 1),
       ]);
       final prod = x.findAllElements('prod').first.childElements.map((e) => e.name.local).toList();
       expect(prod.sublist(prod.indexOf('vUnTrib')), ['vUnTrib', 'vFrete', 'vDesc', 'indTot']);
@@ -171,7 +180,7 @@ void main() {
 
     test('rateio de desconto fecha o valor exato', () {
       final itens = [_item(unit: 10, qtd: 1), _item(unit: 20, qtd: 1), _item(unit: 3.33, qtd: 1)];
-      final partes = ratear(5, itens);
+      final partes = ratear(5, [for (final i in itens) i.valorTotal]);
       expect(partes.fold<double>(0, (s, p) => s + p), closeTo(5, 1e-9));
       expect(partes.first, closeTo(1.50, 1e-9));
     });
@@ -200,6 +209,9 @@ void main() {
   });
 
   test('assinatura continua válida com tributação completa', () {
+    final itens = [
+      _item(icms: const RegraIcms10(aliquota: 18, aliquotaSt: 18, mva: 40), ipi: const RegraIpi.tributado(aliquota: 5))
+    ];
     final d = DadosNfe(
       modelo: ModeloDocumento.nfe,
       ambiente: Ambiente.homologacao,
@@ -207,9 +219,11 @@ void main() {
       numero: 1,
       emitente: const Emitente(cnpj: '12345678000195', razaoSocial: 'E', inscricaoEstadual: '1', endereco: _end, crt: 3),
       destinatario: const Destinatario(nome: 'C', cpf: '11144477735', endereco: _end),
-      itens: [_item(icms: const Icms10(aliquota: 18, aliquotaSt: 18, mva: 40), ipi: const Ipi.tributado(aliquota: 5))],
+      itens: itens,
+      total: calcularTotais(itens),
       pagamentos: const [Pagamento(tipo: '15', valor: 112.20)],
     );
+    expect(d.total.vNF, 112.20);
     expect(verificarAssinatura(EmissorNfe(_cert).gerar(d).xmlAssinado).valido, isTrue);
   });
 }
