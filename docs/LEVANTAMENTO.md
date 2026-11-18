@@ -116,7 +116,7 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 | C14 | **DANFE em contingência**: via do consumidor + via do estabelecimento quando a UF exigir; reimpressão | obrigações por UF | P2 |
 | C15 | Auditoria/log de todas as transições normal ↔ contingência | fiscalização e suporte | P2 |
 
-**Proposta:** um `GerenciadorContingencia` no `dfe_nfe` (Dart puro) com estado (normal/contingência), fila persistente via interface (o PDV fornece o armazenamento), *worker* de retransmissão e callbacks para o app (imprimir, alertar). O app continua decidindo UI e impressão.
+**Onde fica:** no **PDV** (o Zeus não tem contingência automática; pelo princípio "se o Zeus faz, faça; se não, não faça", a biblioteca não implementa). A biblioteca já fornece as peças: `consultarProtocolo` (C3), tpEmis 9/SVC/EPEC/FS-DA (C8–C9), `cancelarPorSubstituicao` (C6–C7), reenvio de evento com horário da SEFAZ (C11) e DANFE com mensagens de contingência (C14). O PDV implementa estado normal/contingência, fila persistente (SQLite), worker de retransmissão, prazos e numeração.
 
 ## 4. Outros itens para produção
 
@@ -179,3 +179,16 @@ Hoje o **app decide** CST, alíquotas e base de cada item e a biblioteca só mon
 - Vende produtos com **ST** (bebidas, autopeças, cosméticos...) ou **monofásicos** (combustíveis)?
 - Vende para **outras UFs** (DIFAL) ou só no balcão?
 - Onde o PDV guarda dados (SQLite, servidor)? — define a fila de contingência e as tabelas do motor.
+
+## 6. Próximos passos (2026-11-18)
+
+**Biblioteca:** B1–B8 e B10 concluídos; B9 fora do escopo. Pendências:
+- Validar na SEFAZ: tributação anêmica + `dfe_calculos`, CSRT, substituição, EPEC, manifestação, IBS/CBS completo, grupos complementares e eventos novos.
+- CC-e: o reenvio com o horário da SEFAZ **não resolveu** o cStat 999 na SEFAZ-SP — investigar (só relevante se o PDV usar CC-e).
+- P2: cache do certificado no WinHTTP, PDF de eventos, XSD, mensagens de rejeição, 2ª UF, outras plataformas.
+
+**PDV (implementação no app, fora da biblioteca):**
+1. Motor tributário (seção 2) — começar pelo cenário real: venda interna a consumidor final, Simples e normal, ST retido, IBPT; alimenta as regras do `dfe_calculos`.
+2. Emissão online com fila persistente e consulta da chave em caso de timeout (C3/C4).
+3. Contingência offline (C1, C2, C5, C6, C12) e guarda dos XML autorizados e eventos por 5 anos.
+4. Dependência dos pacotes pelo Git (`git:` + `path:`), sem publicar no pub.dev.
