@@ -78,7 +78,7 @@ class _DanfePageState extends State<DanfePage> {
   String get _xml => _sel!.arquivo.readAsStringSync();
 
   DanfeNfce _nfce() => DanfeNfce.deXml(_xml,
-      opcoes: OpcoesDanfe(colunas: cfg.colunas, itemEmDuasLinhas: cfg.itemDuasLinhas));
+      opcoes: OpcoesDanfe(colunas: cfg.colunas));
 
   DanfeNfe _nfe() => DanfeNfe.deXml(_xml);
   OpcoesDanfeNfe get _opcoesNfe => OpcoesDanfeNfe(cancelada: _sel!.cancelada);

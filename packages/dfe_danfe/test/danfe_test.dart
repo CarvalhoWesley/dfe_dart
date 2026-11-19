@@ -10,7 +10,7 @@ String _xml({bool comProtocolo = true, String tpEmis = '1', String? dest}) =>
     '<nNF>123</nNF><dhEmi>2026-11-17T10:05:30-03:00</dhEmi><tpEmis>$tpEmis</tpEmis><tpAmb>2</tpAmb></ide>'
     '<emit><CNPJ>12345678000195</CNPJ><xNome>EMPRESA TESTE LTDA</xNome><xFant>LOJA SÃO JOÃO</xFant>'
     '<enderEmit><xLgr>RUA DAS FLORES</xLgr><nro>100</nro><xBairro>CENTRO</xBairro>'
-    '<xMun>SAO PAULO</xMun><UF>SP</UF></enderEmit><IE>111111111111</IE></emit>'
+    '<xMun>SAO PAULO</xMun><UF>SP</UF><CEP>14670000</CEP><fone>1638471885</fone></enderEmit><IE>111111111111</IE></emit>'
     '${dest ?? ''}'
     '<det nItem="1"><prod><cProd>0001</cProd><xProd>PRODUTO COM DESCRIÇÃO BEM LONGA PARA QUEBRAR</xProd>'
     '<qCom>2.0000</qCom><uCom>UN</uCom><vUnCom>5.5000000000</vUnCom><vProd>11.00</vProd></prod></det>'
@@ -45,18 +45,23 @@ void main() {
     final corrido = t.replaceAll(RegExp(r'\s+'), ' ');
     for (final trecho in [
       'LOJA SÃO JOÃO',
-      'CNPJ: 12.345.678/0001-95',
+      'EMPRESA TESTE LTDA LOJA SÃO JOÃO RUA DAS FLORES, 100 - 14670-000 CENTRO - SAO PAULO/SP',
+      'Telefone: (16)3847-1885',
+      'CNPJ:12.345.678/0001-95 IE:111111111111',
       'Documento Auxiliar da Nota Fiscal de Consumidor',
-      'Valor a Pagar R\$',
-      '60,00',
-      'Troco R\$',
-      'Informação dos Tributos Totais Incidentes',
-      '12.741/2012',
-      'EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL',
+      '#|COD|DESC|QTD|UN|VL UN R\$|VL TR R\$*|VL ITEM R\$',
+      '001 0001 PRODUTO COM DESCRIÇÃO',
+      '2,0000 UN X 5,500 11,00',
+      '002 0002 CAFÉ 1,2500 KG X 40,000 50,00',
+      'QTDE TOTAL DE ITENS 002',
+      'VALOR TOTAL R\$ 61,00',
+      'VALOR A PAGAR R\$ 60,00',
+      'FORMA DE PAGAMENTO PIX 50,00 Dinheiro 20,00 TROCO R\$ 10,00',
+      'Obrigado pela preferência Tributos Totais Incidentes (Lei Federal 12.741/2012): R\$8,45',
+      'Emitida em Ambiente de Homologação',
+      'NFCe NR 000000123 Serie 001 Emissão 17/11/2026 10:05:30',
       '3526 1112 3456 7800 0195 6500 1000 0001 2311 2345 6785',
-      'CONSUMIDOR NÃO IDENTIFICADO',
-      'NFC-e nº 000000123 Série 001 17/11/2026 10:05:30',
-      'Protocolo de autorização: 135260000000001',
+      'Protocolo de Autoriz:135260000000001 17/11/2026 10:05:32',
     ]) {
       expect(corrido, contains(trecho), reason: t);
     }
@@ -66,7 +71,8 @@ void main() {
     final t = DanfeNfce.deXml(_xml(), opcoes: OpcoesDanfe.papel58mm).texto(incluirQrCode: false);
     final linhas = t.split('\n').where((l) => l.isNotEmpty);
     expect(linhas.every((l) => l.length <= 32), isTrue, reason: t);
-    expect(t, contains('1,25 KG x 40,00'));
+    expect(t, contains('1,2500 KG X 40,000'));
+    expect(t, isNot(contains('CONSUMIDOR')));
   });
 
   test('contingência sem protocolo e consumidor identificado', () {
@@ -78,7 +84,7 @@ void main() {
     expect(t, contains('EMITIDA EM CONTINGÊNCIA'));
     expect(t, contains('Pendente de autorização'));
     expect(t, contains('CONSUMIDOR - CPF 111.444.777-35'));
-    expect(t, isNot(contains('Protocolo de autorização')));
+    expect(t, isNot(contains('Protocolo de Autoriz')));
   });
 
   group('ESC/POS', () {

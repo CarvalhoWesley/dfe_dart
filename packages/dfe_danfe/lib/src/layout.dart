@@ -32,24 +32,25 @@ class QrCodeDanfe extends ElementoDanfe {
 class OpcoesDanfe {
   const OpcoesDanfe({
     this.colunas = 48,
-    this.itemEmDuasLinhas = false,
     this.removerAcentos = false,
   });
 
   /// 48 para papel de 80 mm, 32 para 58 mm (fonte A).
   final int colunas;
 
-  /// Item em duas linhas (descrição completa + valores) em vez de uma.
-  final bool itemEmDuasLinhas;
-
   final bool removerAcentos;
 
   static const papel80mm = OpcoesDanfe();
-  static const papel58mm = OpcoesDanfe(colunas: 32, itemEmDuasLinhas: true);
+  static const papel58mm = OpcoesDanfe(colunas: 32);
 }
 
 /// Monta o layout do DANFE NFC-e (Manual de Especificações Técnicas do DANFE
-/// NFC-e e QR Code), divisões I a IX.
+/// NFC-e e QR Code).
+///
+/// Ordem: emitente, título, itens (duas linhas por item), totais e
+/// pagamentos, informações complementares, tributos, mensagens de
+/// ambiente/contingência, identificação da NFC-e e consulta, consumidor
+/// (quando identificado), QR Code e protocolo.
 List<ElementoDanfe> montarLayoutNfce(DadosDanfeNfce d, OpcoesDanfe o) {
   final n = o.colunas;
   final r = <ElementoDanfe>[];
@@ -61,82 +62,86 @@ List<ElementoDanfe> montarLayoutNfce(DadosDanfeNfce d, OpcoesDanfe o) {
     }
   }
 
-  void esquerda(String s, {bool negrito = false}) {
-    for (final l in quebrar(s, n)) {
-      r.add(LinhaDanfe(l, negrito: negrito));
+  void esquerda(String s, {bool negrito = false, int recuo = 0}) {
+    final linhas = quebrar(s, n);
+    for (var i = 0; i < linhas.length; i++) {
+      if (i == 0 || recuo == 0) {
+        r.add(LinhaDanfe(linhas[i], negrito: negrito));
+      } else {
+        for (final l in quebrar(linhas.skip(i).join(' '), n - recuo)) {
+          r.add(LinhaDanfe('${' ' * recuo}$l', negrito: negrito));
+        }
+        break;
+      }
     }
   }
 
   void colunas(String esq, String dir, {bool negrito = false}) =>
       r.add(LinhaDanfe(juntar(esq, dir, n), negrito: negrito));
 
-  // I - Emitente
-  centro(d.nomeFantasia ?? d.emitente, negrito: true);
-  if (d.nomeFantasia != null) centro(d.emitente);
-  centro('CNPJ: ${formatarCnpjCpf(d.cnpjEmitente)}  IE: ${d.ieEmitente}');
-  if (d.enderecoEmitente.isNotEmpty) centro(d.enderecoEmitente);
+  // Emitente
+  centro(d.emitente);
+  if (d.nomeFantasia != null) centro(d.nomeFantasia!);
+  final endereco = d.enderecoEmitenteLinhas.isNotEmpty
+      ? d.enderecoEmitenteLinhas
+      : [if (d.enderecoEmitente.isNotEmpty) d.enderecoEmitente];
+  for (final l in endereco) {
+    centro(l);
+  }
+  if (d.foneEmitente != null) centro('Telefone: ${d.foneEmitente}');
+  centro('CNPJ:${formatarCnpjCpf(d.cnpjEmitente)} IE:${d.ieEmitente}');
   r.add(const SeparadorDanfe());
-  centro('Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica', negrito: true);
+  centro('Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica');
   r.add(const SeparadorDanfe());
 
-  // II - Itens
-  if (o.itemEmDuasLinhas) {
-    colunas('#  Código Descrição', '', negrito: true);
-    colunas('Qtde UN x Vl Unit', 'Vl Total', negrito: true);
-  } else {
-    colunas('Código Descrição', _colunasValores('Qtde', 'UN', 'Vl Unit', 'Vl Total'),
-        negrito: true);
-  }
+  // Itens
+  esquerda('#|COD|DESC|QTD|UN|VL UN R\$|VL TR R\$*|VL ITEM R\$');
+  r.add(const SeparadorDanfe());
   for (var i = 0; i < d.itens.length; i++) {
     final it = d.itens[i];
-    final qtd = formatarQuantidade(it.quantidade);
-    final vu = formatarValor(it.valorUnitario);
-    final vt = formatarValor(it.valorTotal);
     final seq = (i + 1).toString().padLeft(3, '0');
-    if (o.itemEmDuasLinhas) {
-      esquerda('$seq ${it.codigo} ${it.descricao}');
-      colunas('   $qtd ${it.unidade} x $vu', vt);
-    } else {
-      final dir = _colunasValores(qtd, it.unidade, vu, vt);
-      final esqMax = n - dir.length - 1;
-      final esq = '${it.codigo} ${it.descricao}';
-      colunas(esq.length > esqMax ? esq.substring(0, esqMax) : esq, dir);
-    }
+    esquerda('$seq ${it.codigo} ${it.descricao}', recuo: 4);
+    colunas('${formatarDecimal(it.quantidade, 4)} ${it.unidade} X ${formatarDecimal(it.valorUnitario, 3)}',
+        formatarValor(it.valorTotal));
   }
   r.add(const SeparadorDanfe());
 
-  // III - Totais e pagamentos
-  colunas('Qtde. total de itens', '${d.itens.length}');
-  colunas('Valor total R\$', formatarValor(d.valorProdutos));
-  if (d.desconto > 0) colunas('Desconto R\$', formatarValor(d.desconto));
-  if (d.acrescimos > 0) colunas('Acréscimos R\$', formatarValor(d.acrescimos));
-  colunas('Valor a Pagar R\$', formatarValor(d.valorTotal), negrito: true);
-  colunas('FORMA PAGAMENTO', 'VALOR PAGO R\$', negrito: true);
+  // Totais e pagamentos
+  colunas('QTDE TOTAL DE ITENS', d.itens.length.toString().padLeft(3, '0'));
+  colunas('VALOR TOTAL R\$', formatarValor(d.valorProdutos));
+  if (d.desconto > 0) colunas('DESCONTO R\$', formatarValor(d.desconto));
+  if (d.acrescimos > 0) colunas('ACRÉSCIMOS R\$', formatarValor(d.acrescimos));
+  if (d.desconto > 0 || d.acrescimos > 0) colunas('VALOR A PAGAR R\$', formatarValor(d.valorTotal));
+  esquerda('FORMA DE PAGAMENTO');
   for (final p in d.pagamentos) {
     colunas(p.descricao, formatarValor(p.valor));
   }
-  if (d.troco > 0) colunas('Troco R\$', formatarValor(d.troco));
+  if (d.troco > 0) colunas('TROCO R\$', formatarValor(d.troco));
   r.add(const SeparadorDanfe());
 
-  // IV - Tributos (Lei 12.741/2012)
+  // Informações complementares e tributos (Lei 12.741/2012)
+  final complementares = d.informacoesComplementares;
+  if (complementares != null) {
+    for (final l in complementares.split(RegExp(r'[|;\n]'))) {
+      if (l.trim().isNotEmpty) esquerda(l.trim());
+    }
+  }
   if (d.tributos > 0) {
-    esquerda('Informação dos Tributos Totais Incidentes (Lei Federal 12.741/2012) '
-        'R\$ ${formatarValor(d.tributos)}');
-    r.add(const SeparadorDanfe());
+    esquerda('Tributos Totais Incidentes (Lei Federal 12.741/2012): R\$${formatarValor(d.tributos)}');
   }
+  if (complementares != null || d.tributos > 0) r.add(const SeparadorDanfe());
 
-  // Mensagens de ambiente/contingência (área de mensagem fiscal)
-  if (d.homologacao) {
-    centro('EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL', negrito: true);
-  }
+  // Mensagens de ambiente/contingência
+  if (d.homologacao) centro('Emitida em Ambiente de Homologação');
   if (d.contingencia) {
     centro('EMITIDA EM CONTINGÊNCIA', negrito: true);
     if (d.pendenteAutorizacao) centro('Pendente de autorização', negrito: true);
   }
 
-  // V - Consulta pela chave
-  centro('Consulte pela Chave de Acesso em');
-  centro(d.urlConsulta);
+  // Identificação da NFC-e e consulta pela chave
+  centro('NFCe NR ${d.numero.toString().padLeft(9, '0')} Serie ${d.serie.toString().padLeft(3, '0')} '
+      'Emissão ${formatarDataHora(d.dataEmissao)}');
+  if (d.urlConsulta.isNotEmpty) centro(d.urlConsulta);
   final chave = formatarChave(d.chave);
   if (chave.length <= n) {
     centro(chave);
@@ -145,33 +150,22 @@ List<ElementoDanfe> montarLayoutNfce(DadosDanfeNfce d, OpcoesDanfe o) {
     centro(chave.substring(0, 29));
     centro(chave.substring(30));
   }
-  r.add(const SeparadorDanfe());
 
-  // VI - Consumidor
-  if (d.consumidorDocumento == null) {
-    centro('CONSUMIDOR NÃO IDENTIFICADO', negrito: true);
-  } else {
-    centro('CONSUMIDOR - ${d.consumidorDocumento!.length == 14 ? 'CNPJ' : d.consumidorDocumento!.length == 11 ? 'CPF' : 'Id. Estrangeiro'} '
-        '${formatarCnpjCpf(d.consumidorDocumento!)}', negrito: true);
+  // Consumidor (só quando identificado)
+  if (d.consumidorDocumento != null) {
+    r.add(const SeparadorDanfe());
+    final doc = d.consumidorDocumento!;
+    final tipo = doc.length == 14 ? 'CNPJ' : doc.length == 11 ? 'CPF' : 'Id. Estrangeiro';
+    centro('CONSUMIDOR - $tipo ${formatarCnpjCpf(doc)}');
     if (d.consumidorNome != null) centro(d.consumidorNome!);
   }
   r.add(const SeparadorDanfe());
 
-  // VII - Identificação da NFC-e e protocolo
-  centro('NFC-e nº ${d.numero.toString().padLeft(9, '0')} Série ${d.serie.toString().padLeft(3, '0')} '
-      '${formatarDataHora(d.dataEmissao)}', negrito: true);
-  if (d.protocolo != null) {
-    centro('Protocolo de autorização: ${d.protocolo}');
-    if (d.dataAutorizacao != null) centro('Data de autorização: ${formatarDataHora(d.dataAutorizacao!)}');
-  }
-
-  // VIII - QR Code
+  // QR Code e protocolo
   if (d.qrCode.isNotEmpty) r.add(QrCodeDanfe(d.qrCode));
-
-  // IX - Informações complementares
-  if (d.informacoesComplementares != null) {
-    r.add(const SeparadorDanfe());
-    esquerda(d.informacoesComplementares!);
+  if (d.protocolo != null) {
+    centro('Protocolo de Autoriz:${d.protocolo}'
+        '${d.dataAutorizacao == null ? '' : ' ${formatarDataHora(d.dataAutorizacao!)}'}');
   }
 
   if (!o.removerAcentos) return r;
@@ -186,12 +180,8 @@ List<ElementoDanfe> montarLayoutNfce(DadosDanfeNfce d, OpcoesDanfe o) {
 
 // --- Formatação ---------------------------------------------------------------
 
-/// Colunas de valores do item em uma linha: Qtde(6) UN(3) Vl Unit(8) Vl Total(9).
-String _colunasValores(String qtd, String un, String vu, String vt) {
-  String corta(String s, int n) => s.length > n ? s.substring(0, n) : s;
-  return '${corta(qtd, 6).padLeft(6)} ${corta(un, 3).padRight(3)}'
-      '${corta(vu, 8).padLeft(8)}${corta(vt, 9).padLeft(9)}';
-}
+/// Decimal com [casas] casas e vírgula, sem separador de milhar (ex.: "1,0000").
+String formatarDecimal(double v, int casas) => v.toStringAsFixed(casas).replaceAll('.', ',');
 
 String formatarValor(double v) {
   final s = v.toStringAsFixed(2);

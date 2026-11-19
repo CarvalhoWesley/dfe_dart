@@ -73,7 +73,6 @@ class DanfeNfce {
     final l = escPos.paginaCodigo == PaginaCodigo.semAcento
         ? montarLayoutNfce(dados, OpcoesDanfe(
             colunas: opcoes.colunas,
-            itemEmDuasLinhas: opcoes.itemEmDuasLinhas,
             removerAcentos: true))
         : layout;
     return renderizarEscPos(l, opcoes.colunas, escPos);

@@ -8,6 +8,8 @@ class DadosDanfeNfce {
     required this.cnpjEmitente,
     required this.ieEmitente,
     required this.enderecoEmitente,
+    this.enderecoEmitenteLinhas = const [],
+    this.foneEmitente,
     required this.itens,
     required this.valorProdutos,
     required this.desconto,
@@ -60,6 +62,19 @@ class DadosDanfeNfce {
             '${t(ender, 'xMun')} - ${t(ender, 'UF')}',
           ].where((s) => s.trim().isNotEmpty).join(', ');
 
+    final cep = t(ender, 'CEP');
+    final linhas = ender == null
+        ? const <String>[]
+        : [
+            [
+              [t(ender, 'xLgr'), t(ender, 'nro'), t(ender, 'xCpl')].where((s) => s.isNotEmpty).join(', '),
+              if (cep.length == 8) '${cep.substring(0, 5)}-${cep.substring(5)}',
+            ].join(' - '),
+            [t(ender, 'xBairro'), '${t(ender, 'xMun')}/${t(ender, 'UF')}']
+                .where((s) => s.isNotEmpty).join(' - '),
+          ];
+    final fone = t(ender, 'fone');
+
     final itens = inf.findElements('det').map((det) {
       final p = det.getElement('prod')!;
       return ItemDanfe(
@@ -84,6 +99,8 @@ class DadosDanfeNfce {
       cnpjEmitente: t(emit, 'CNPJ').isNotEmpty ? t(emit, 'CNPJ') : t(emit, 'CPF'),
       ieEmitente: t(emit, 'IE'),
       enderecoEmitente: endereco,
+      enderecoEmitenteLinhas: linhas,
+      foneEmitente: fone.isEmpty ? null : _formatarFone(fone),
       itens: itens,
       valorProdutos: d(tot, 'vProd'),
       desconto: d(tot, 'vDesc'),
@@ -123,6 +140,12 @@ class DadosDanfeNfce {
   final String cnpjEmitente;
   final String ieEmitente;
   final String enderecoEmitente;
+
+  /// Endereço em linhas: "logradouro, número - CEP" e "bairro - município/UF".
+  final List<String> enderecoEmitenteLinhas;
+
+  /// Telefone do emitente formatado, ex.: "(16)3847-1885".
+  final String? foneEmitente;
   final List<ItemDanfe> itens;
   final double valorProdutos;
   final double desconto;
@@ -192,6 +215,12 @@ class PagamentoDanfe {
         _ => 'Outros',
       };
 }
+
+String _formatarFone(String f) => switch (f.length) {
+      10 => '(${f.substring(0, 2)})${f.substring(2, 6)}-${f.substring(6)}',
+      11 => '(${f.substring(0, 2)})${f.substring(2, 7)}-${f.substring(7)}',
+      _ => f,
+    };
 
 /// Data/hora como escrita no XML (hora local do emissor), ignorando o fuso.
 DateTime _horaLocal(String s) => DateTime.parse(s.length >= 19 ? s.substring(0, 19) : s);
